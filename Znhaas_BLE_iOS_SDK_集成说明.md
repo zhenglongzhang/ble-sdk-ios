@@ -34,13 +34,13 @@
 本地调试时：
 
 ```swift
-.package(path: "/Users/zhenglongzhang/coding/ble-sdk-ios")
+.package(path: "/ble-sdk-ios")
 ```
 
 远程发布后：
 
 ```swift
-.package(url: "https://github.com/your-org/ble-sdk-ios.git", from: "1.0.0")
+.package(url: "https://github.com/zhangzhenglong/ble-sdk-ios.git", from: "1.0.0")
 ```
 
 ### 4.2 引用模块

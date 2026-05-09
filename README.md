@@ -58,14 +58,10 @@ V1|RECORD|4|1715155220000
 
 本地调试时，可以直接引用当前目录：
 
-```swift
-.package(path: "/Users/zhenglongzhang/coding/ble-sdk-ios")
-```
-
 远程仓库发布后，可改为：
 
 ```swift
-.package(url: "https://github.com/your-org/ble-sdk-ios.git", from: "1.0.0")
+.package(url: "https://github.com/zhenglongzhang/ble-sdk-ios.git", from: "1.0.0")
 ```
 
 ## Demo App
