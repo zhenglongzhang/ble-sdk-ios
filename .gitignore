@@ -1,0 +1,17 @@
+.DS_Store
+.build/
+.build-ios/
+.cache/
+.swiftpm/
+Package.resolved
+DerivedData/
+.deriveddata/
+.sourcepackages-demo/
+DemoApp/build/
+xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.moved-aside
+*.xcscmblueprint
+*.xcresult

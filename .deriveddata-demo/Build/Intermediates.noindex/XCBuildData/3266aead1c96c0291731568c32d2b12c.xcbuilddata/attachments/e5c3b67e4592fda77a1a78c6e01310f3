@@ -1,0 +1,39 @@
+{
+  "" : {
+    "diagnostics" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/ZnhaasBleDemo-primary.dia",
+    "emit-module-dependencies" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/ZnhaasBleDemo-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/ZnhaasBleDemo-primary-emit-module.dia",
+    "pch" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/ZnhaasBleDemo-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/ZnhaasBleDemo-primary.swiftdeps"
+  },
+  "/Users/zhenglongzhang/coding/ble-sdk-ios/DemoApp/ZnhaasBleDemo/AppDelegate.swift" : {
+    "const-values" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/AppDelegate.swiftconstvalues",
+    "dependencies" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/AppDelegate.d",
+    "diagnostics" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/AppDelegate.dia",
+    "index-unit-output-path" : "/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/AppDelegate.o",
+    "llvm-bc" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/AppDelegate.bc",
+    "object" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/AppDelegate.o",
+    "swift-dependencies" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/AppDelegate.swiftdeps",
+    "swiftmodule" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/AppDelegate~partial.swiftmodule"
+  },
+  "/Users/zhenglongzhang/coding/ble-sdk-ios/DemoApp/ZnhaasBleDemo/DeviceCell.swift" : {
+    "const-values" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/DeviceCell.swiftconstvalues",
+    "dependencies" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/DeviceCell.d",
+    "diagnostics" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/DeviceCell.dia",
+    "index-unit-output-path" : "/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/DeviceCell.o",
+    "llvm-bc" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/DeviceCell.bc",
+    "object" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/DeviceCell.o",
+    "swift-dependencies" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/DeviceCell.swiftdeps",
+    "swiftmodule" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/DeviceCell~partial.swiftmodule"
+  },
+  "/Users/zhenglongzhang/coding/ble-sdk-ios/DemoApp/ZnhaasBleDemo/MainViewController.swift" : {
+    "const-values" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/MainViewController.swiftconstvalues",
+    "dependencies" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/MainViewController.d",
+    "diagnostics" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/MainViewController.dia",
+    "index-unit-output-path" : "/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/MainViewController.o",
+    "llvm-bc" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/MainViewController.bc",
+    "object" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/MainViewController.o",
+    "swift-dependencies" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/MainViewController.swiftdeps",
+    "swiftmodule" : "/Users/zhenglongzhang/coding/ble-sdk-ios/.deriveddata-demo/Build/Intermediates.noindex/ZnhaasBleDemo.build/Debug-iphonesimulator/ZnhaasBleDemo.build/Objects-normal/x86_64/MainViewController~partial.swiftmodule"
+  }
+}

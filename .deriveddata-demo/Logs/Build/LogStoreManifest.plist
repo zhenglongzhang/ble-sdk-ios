@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>logFormatVersion</key>
+	<integer>11</integer>
+	<key>logs</key>
+	<dict>
+		<key>08407651-53C8-4A4F-8240-DD1F719C3655</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>08407651-53C8-4A4F-8240-DD1F719C3655.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>2</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>ZnhaasBleDemo project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>ZnhaasBleDemo</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project ZnhaasBleDemo with scheme ZnhaasBleDemo</string>
+			<key>timeStartedRecording</key>
+			<real>800012888.84557998</real>
+			<key>timeStoppedRecording</key>
+			<real>800012894.75464106</real>
+			<key>title</key>
+			<string>Building project ZnhaasBleDemo with scheme ZnhaasBleDemo</string>
+			<key>uniqueIdentifier</key>
+			<string>08407651-53C8-4A4F-8240-DD1F719C3655</string>
+		</dict>
+		<key>DA52FBD9-63E3-433C-A45F-1252362C1BAE</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>DA52FBD9-63E3-433C-A45F-1252362C1BAE.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>2</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>ZnhaasBleDemo project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>ZnhaasBleDemo</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project ZnhaasBleDemo with scheme ZnhaasBleDemo</string>
+			<key>timeStartedRecording</key>
+			<real>800012162.70015299</real>
+			<key>timeStoppedRecording</key>
+			<real>800012175.07379305</real>
+			<key>title</key>
+			<string>Building project ZnhaasBleDemo with scheme ZnhaasBleDemo</string>
+			<key>uniqueIdentifier</key>
+			<string>DA52FBD9-63E3-433C-A45F-1252362C1BAE</string>
+		</dict>
+	</dict>
+</dict>
+</plist>
