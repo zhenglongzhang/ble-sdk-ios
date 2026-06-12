@@ -15,10 +15,12 @@
   - 例如：`znhaas_23070401` 显示为 `23070401`
 - 固定使用 znhaas UART Service
   - Service UUID：`6E400001-B5A3-F393-E0A9-E50E24DCCA9E`
-  - Write UUID：`6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
-  - Notify UUID：`6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
+  - Write UUID：`6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
+  - Reply UUID：`6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
+- 设备业务 ACK 优先使用 Notify/Indicate 监听，ACK 格式以 `V1|ACK|...` 开头
+- 如果 Reply 特征只能 Read，可通过 SDK 读取一次作为诊断兜底；读到的 `RECORD|SUPPORTED` 属于能力说明，不代表本次命令 ACK
 - 封装 5 个录制控制动作
-- 控制报文不发送扩展字段
+- 控制命令支持可选追加任意键值对扩展字段，只有 key 和 value 都有值才会下发
 
 ## 3. 环境要求
 
@@ -141,13 +143,13 @@ bleClient.connect(device)
 - `bleClient(_:didBecomeReady:)`
 - `bleClient(_:didDisconnect:error:)`
 
-### 6.6 开启固定回传通知
+### 6.6 开启固定回传监听
 
 ```swift
-bleClient.enableFixedNotification { result in
+bleClient.enableFixedServiceNotifications { result in
     switch result {
     case .success:
-        print("notify enabled")
+        print("reply listener enabled")
     case .failure(let error):
         print(error.localizedDescription)
     }
@@ -170,6 +172,12 @@ func bleClient(
 }
 ```
 
+说明：
+
+- `enableFixedServiceNotifications(...)` 会监听固定 Service 下所有支持 Notify/Indicate 的特征，避免设备 ACK 不在固定 Reply UUID 上时漏收
+- 若固定 Reply 特征不支持 Notify/Indicate，但支持 Read，可在写入成功后调用 `readFixedReply(...)` 读取诊断值
+- 业务成功与否应以 `V1|ACK|...` 格式的 ACK 为准
+
 ## 7. 录制控制接口
 
 ### 7.1 控制协议
@@ -177,7 +185,13 @@ func bleClient(
 当前 SDK 实际发送给设备的报文格式：
 
 ```text
-V1|RECORD|ACTION|TIMESTAMP
+V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP
+```
+
+带业务扩展字段时格式如下：
+
+```text
+V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP|key1=value1|key2=value2
 ```
 
 ### 7.2 控制动作列表
@@ -204,10 +218,29 @@ let requestId = bleClient.startRecord { result in
 }
 ```
 
+如需随指令追加业务字段：
+
+```swift
+let requestId = bleClient.startRecord(extraFields: [
+    "work_order": "WO-20250122",
+    "task_id": "TASK-01"
+], completion: nil)
+```
+
+H5 JSBridge 调用示例：
+
+```js
+window.ZnhaasBleBridge.startRecord({
+  work_order: 'WO-20250122',
+  task_id: 'TASK-01'
+})
+```
+
 说明：
 
 - `requestId` 仅用于业务侧日志关联
-- `requestId` 不会拼接进设备控制报文
+- `requestId` 会拼接进设备控制报文，用于和设备返回的 `V1|ACK|...` 进行链路关联
+- 扩展字段会追加在指令末尾，例如：`V1|RECORD|1|req-1705939230000|1705939230000|work_order=WO-20250122|task_id=TASK-01`
 
 ## 8. 常用 API 速查
 
@@ -223,13 +256,16 @@ let requestId = bleClient.startRecord { result in
 - `ZnhaasBleClient.isTargetDeviceName(_:)`
 - `ZnhaasBleClient.extractDisplayName(_:)`
 - `ZnhaasBleClient.buildRequestId(action:)`
-- `ZnhaasBleClient.buildRecordCommand(action:requestId:timestamp:)`
+- `ZnhaasBleClient.buildRecordCommand(action:requestId:timestamp:extraFields:)`
+- `enableFixedServiceNotifications(completion:)`
+- `readFixedReply(completion:)`
 
 ## 9. 接入建议
 
 - 建议在 `didBecomeReady` 回调后再发送录制控制命令
 - 建议在进入设备列表页面时开始扫描，离开页面时停止扫描
 - 建议业务层自行记录 `requestId`、时间戳、用户、设备标识，方便排查控制链路
+- H5 接入时通过 `window.ZnhaasBleBridge` 调用扫描、连接和录制控制能力，Demo 已内置 WKWebView 桥接示例
 - 建议在收到断开连接回调后清理 UI 状态
 
 ## 10. 注意事项
@@ -238,4 +274,3 @@ let requestId = bleClient.startRecord { result in
 - 如果设备没有暴露固定 Write/Notify 特征，SDK 会返回特征未找到错误
 - 当前 SDK 只适配 `znhaas` 前缀设备，不处理其他 BLE 外设
 - 示例代码位于 `Examples/ExampleUsage.swift`
-

@@ -1,6 +1,0 @@
-Target dependency graph (3 targets)
-Target 'ZnhaasBleDemo' in project 'ZnhaasBleDemo'
-➜ Explicit dependency on target 'ZnhaasBleSDK' in project 'ZnhaasBleSDK'
-Target 'ZnhaasBleSDK' in project 'ZnhaasBleSDK'
-➜ Explicit dependency on target 'ZnhaasBleSDK' in project 'ZnhaasBleSDK'
-Target 'ZnhaasBleSDK' in project 'ZnhaasBleSDK' (no dependencies)

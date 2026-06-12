@@ -9,10 +9,12 @@
   - 例如：`znhaas_23070401` -> `23070401`
 - 固定使用 znhaas UART Service
   - Service UUID: `6E400001-B5A3-F393-E0A9-E50E24DCCA9E`
-  - Write UUID: `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
-  - Notify UUID: `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
+  - Write UUID: `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
+  - Reply UUID: `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
+- 设备业务 ACK 优先使用 Notify/Indicate 监听，ACK 格式以 `V1|ACK|...` 开头
+- 如果 Reply 特征只能 Read，Demo 会在写入成功后读取一次作为诊断兜底；读到的 `RECORD|SUPPORTED` 属于能力说明，不代表本次命令 ACK
 - 按照业务控制协议封装 5 个控制动作
-- 发送命令时不追加扩展字段
+- 控制命令支持可选追加任意键值对扩展字段，只有 key 和 value 都有值才会下发
 - 基于 iOS 原生 `CoreBluetooth` 实现，不依赖第三方 BLE 库
 
 ## 工程结构
@@ -31,7 +33,13 @@
 协议统一格式：
 
 ```text
-V1|RECORD|ACTION|TIMESTAMP
+V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP
+```
+
+带业务扩展字段时格式如下：
+
+```text
+V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP|key1=value1|key2=value2
 ```
 
 当前封装的 5 个动作如下：
@@ -45,11 +53,12 @@ V1|RECORD|ACTION|TIMESTAMP
 示例：
 
 ```text
-V1|RECORD|1|1715155200000
-V1|RECORD|0|1715155205000
-V1|RECORD|2|1715155210000
-V1|RECORD|3|1715155215000
-V1|RECORD|4|1715155220000
+V1|RECORD|1|req-1715155200000|1715155200000
+V1|RECORD|0|req-1715155205000|1715155205000
+V1|RECORD|2|req-1715155210000|1715155210000
+V1|RECORD|3|req-1715155215000|1715155215000
+V1|RECORD|4|req-1715155220000|1715155220000
+V1|RECORD|1|req-1705939230000|1705939230000|work_order=WO-20250122|task_id=TASK-01
 ```
 
 ## 接入方式
@@ -66,18 +75,20 @@ V1|RECORD|4|1715155220000
 
 ## Demo App
 
-当前仓库已经内置了一个原生 UIKit Demo 工程：
+当前仓库已经内置了一个 WKWebView + H5 Demo 工程：
 
 - Xcode 工程：[ZnhaasBleDemo.xcodeproj](/Users/zhenglongzhang/coding/ble-sdk-ios/DemoApp/ZnhaasBleDemo.xcodeproj)
 - 主页控制器：[MainViewController.swift](/Users/zhenglongzhang/coding/ble-sdk-ios/DemoApp/ZnhaasBleDemo/MainViewController.swift:1)
+- H5 页面：[znhaas_ble_demo.html](/Users/zhenglongzhang/coding/ble-sdk-ios/DemoApp/ZnhaasBleDemo/znhaas_ble_demo.html:1)
 
 Demo 提供以下能力：
 
 - 扫描 `znhaas` 前缀 BLE 设备
 - 点击设备进行连接
-- 自动开启固定 Notify 特征监听
-- 点击 5 个录制控制按钮发送命令
-- 在页面底部实时查看连接日志、写入结果和设备回传
+- 自动监听固定 Service 下所有支持 Notify/Indicate 的特征
+- H5 通过 `window.ZnhaasBleBridge` 调用原生 BLE 能力
+- 点击 5 个录制控制按钮发送命令，并支持传任意键值对扩展字段
+- 在页面底部实时查看连接日志、写入结果和设备 ACK
 
 说明：
 
@@ -152,7 +163,7 @@ bleClient.connect(device)
 
 ```swift
 func bleClient(_ client: ZnhaasBleClient, didBecomeReady device: ZnhaasBleDevice) {
-    client.enableFixedNotification(completion: nil)
+    client.enableFixedServiceNotifications(completion: nil)
 }
 ```
 
@@ -169,6 +180,15 @@ let requestId = bleClient.startRecord { result in
 }
 ```
 
+如需追加业务字段：
+
+```swift
+let requestId = bleClient.startRecord(extraFields: [
+    "work_order": "WO-20250122",
+    "task_id": "TASK-01"
+], completion: nil)
+```
+
 当前控制方法包括：
 
 - `startRecord(completion:)`
@@ -176,8 +196,22 @@ let requestId = bleClient.startRecord { result in
 - `queryRecordStatus(completion:)`
 - `disableVideoKey(completion:)`
 - `enableVideoKey(completion:)`
+- `startRecord(extraFields:completion:)`
+- `stopRecord(extraFields:completion:)`
+- `queryRecordStatus(extraFields:completion:)`
+- `disableVideoKey(extraFields:completion:)`
+- `enableVideoKey(extraFields:completion:)`
 
-`requestId` 用于业务侧日志关联；当前 SDK 实际下发给设备的控制报文格式为 `V1|RECORD|ACTION|TIMESTAMP`。
+`requestId` 用于业务侧日志关联；当前 SDK 实际下发给设备的控制报文格式为 `V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP`，也可追加任意非空键值对。
+
+H5 JSBridge 示例：
+
+```js
+window.ZnhaasBleBridge.startRecord({
+  work_order: 'WO-20250122',
+  task_id: 'TASK-01'
+})
+```
 
 ### 5. 监听设备回传
 
@@ -195,6 +229,11 @@ func bleClient(
 }
 ```
 
+说明：
+
+- 业务 ACK 以 `V1|ACK|...` 开头，例如 `V1|ACK|RECORD|SUCCESS|req-...|...|state=RECORDING`
+- 如果 Demo 显示 `Read fallback value (not ACK)`，说明这是读取到的诊断值，不是设备 ACK
+
 ## 关键 API
 
 `ZnhaasBleClient` 当前已经内置业务常量：
@@ -209,14 +248,17 @@ func bleClient(
 - `ZnhaasBleClient.isTargetDeviceName(_:)`
 - `ZnhaasBleClient.extractDisplayName(_:)`
 - `ZnhaasBleClient.buildRequestId(action:)`
-- `ZnhaasBleClient.buildRecordCommand(action:requestId:timestamp:)`
+- `ZnhaasBleClient.buildRecordCommand(action:requestId:timestamp:extraFields:)`
 
 通知相关：
 
 - `enableFixedNotification(completion:)`
+- `enableFixedServiceNotifications(completion:)`
 - `disableFixedNotification(completion:)`
 - `enableNotification(serviceUUID:characteristicUUID:completion:)`
 - `disableNotification(serviceUUID:characteristicUUID:completion:)`
+- `readFixedReply(completion:)`
+- `read(serviceUUID:characteristicUUID:completion:)`
 
 ## 本地验证
 

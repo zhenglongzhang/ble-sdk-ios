@@ -14,9 +14,11 @@ public enum ZnhaasBleError: LocalizedError {
     case serviceNotFound(CBUUID)
     case characteristicNotFound(CBUUID)
     case notifyNotSupported(CBUUID)
+    case readNotSupported(CBUUID)
     case writeNotSupported(CBUUID)
     case connectionFailed(String)
     case writeFailed(String)
+    case readFailed(String)
     case notifyFailed(String)
 
     public var errorDescription: String? {
@@ -45,12 +47,16 @@ public enum ZnhaasBleError: LocalizedError {
             return "Characteristic was not found: \(uuid.uuidString)"
         case .notifyNotSupported(let uuid):
             return "Characteristic does not support notify: \(uuid.uuidString)"
+        case .readNotSupported(let uuid):
+            return "Characteristic does not support read: \(uuid.uuidString)"
         case .writeNotSupported(let uuid):
             return "Characteristic does not support write: \(uuid.uuidString)"
         case .connectionFailed(let reason):
             return "Connection failed: \(reason)"
         case .writeFailed(let reason):
             return "Write failed: \(reason)"
+        case .readFailed(let reason):
+            return "Read failed: \(reason)"
         case .notifyFailed(let reason):
             return "Notify failed: \(reason)"
         }
@@ -75,4 +81,3 @@ public enum ZnhaasBleError: LocalizedError {
         }
     }
 }
-

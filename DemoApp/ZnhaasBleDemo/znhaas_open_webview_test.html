@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Open WebView Test</title>
+  <style>
+    :root {
+      --bg: #eef1f8;
+      --card: #ffffff;
+      --ink: #161d2b;
+      --muted: #6d7383;
+      --brand: #4057d6;
+      --line: #dde2f0;
+      --log-bg: #101421;
+      --log: #ccd5ff;
+      --shadow: 0 16px 36px rgba(44, 57, 108, 0.14);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(64, 87, 214, 0.18), transparent 34%),
+        linear-gradient(150deg, #fbfcff 0%, var(--bg) 100%);
+      color: var(--ink);
+      font-family: "Avenir Next", "PingFang SC", sans-serif;
+      padding: 20px 15px 32px;
+    }
+    a { color: var(--brand); text-decoration: none; font-weight: 800; }
+    h1 { font-size: 30px; margin: 14px 0 8px; letter-spacing: -0.04em; }
+    .subtitle { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0 0 16px; }
+    .card {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      margin: 14px 0;
+      padding: 16px;
+    }
+    label {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      font-weight: 900;
+      margin: 12px 0 6px;
+    }
+    input {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      color: var(--ink);
+      font: inherit;
+      min-height: 44px;
+      outline: none;
+      padding: 10px 12px;
+      width: 100%;
+    }
+    .buttons {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    button {
+      appearance: none;
+      background: var(--brand);
+      border: 0;
+      border-radius: 16px;
+      color: white;
+      font: inherit;
+      font-weight: 900;
+      min-height: 48px;
+      padding: 12px 14px;
+      width: 100%;
+    }
+    button.secondary {
+      background: #edf0ff;
+      color: var(--brand);
+    }
+    .log {
+      background: var(--log-bg);
+      border-radius: 18px;
+      color: var(--log);
+      font-family: "Menlo", "Consolas", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      max-height: 310px;
+      min-height: 220px;
+      overflow: auto;
+      padding: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <a href="znhaas_app_tests.html">返回测试入口</a>
+  <h1>打开新 WebView 测试</h1>
+  <p class="subtitle">调用 `window.ZnhaasAppBridge.openWebView({ url, title })`，由原生打开一个新的 WebView 页面。</p>
+
+  <section class="card">
+    <label for="url">URL</label>
+    <input id="url" value="znhaas_webview_target.html">
+    <label for="title">Title</label>
+    <input id="title" value="工单详情">
+    <div class="buttons">
+      <button onclick="openCustom()">打开输入的 URL</button>
+      <button class="secondary" onclick="openLocal()">打开本地测试页</button>
+      <button class="secondary" onclick="openHttps()">打开 https://www.longfor.com</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="log" id="log"></div>
+  </section>
+
+  <script>
+    window.ZnhaasApp = window.ZnhaasApp || {};
+    window.ZnhaasApp.onNativeEvent = handleNativeEvent;
+    window.addEventListener('ZnhaasAppEvent', event => handleNativeEvent(event.detail));
+
+    function bridge() {
+      return window.__ZnhaasAppBridgeFacade || window.ZnhaasAppBridge;
+    }
+
+    function openCustom() {
+      openUrl(document.getElementById('url').value, document.getElementById('title').value);
+    }
+
+    function openLocal() {
+      openUrl('znhaas_webview_target.html', '本地新 WebView');
+    }
+
+    function openHttps() {
+      openUrl('https://www.longfor.com', '龙湖官网');
+    }
+
+    function openUrl(url, title) {
+      if (!bridge()) {
+        log('ZnhaasAppBridge not ready. 请在 iOS Demo WKWebView 中打开。');
+        return;
+      }
+      const requestId = bridge().openWebView({ url, title });
+      log('openWebView requestId=' + requestId + ', url=' + url);
+    }
+
+    function handleNativeEvent(event) {
+      if (!event || !event.type) {
+        return;
+      }
+      log(JSON.stringify(event, null, 2));
+    }
+
+    function log(message) {
+      const node = document.getElementById('log');
+      node.textContent = '[' + new Date().toLocaleTimeString() + '] ' + message + '\n' + node.textContent;
+    }
+
+    log('Open WebView test ready.');
+  </script>
+</body>
+</html>

@@ -16,19 +16,37 @@ final class ZnhaasBleSDKTests: XCTestCase {
         XCTAssertEqual(ZnhaasBleClient.extractDisplayName(nil), "Unknown device")
     }
 
-    func testRecordCommandDoesNotAppendRequestId() {
+    func testRecordCommandAppendsRequestId() {
         let command = ZnhaasBleClient.buildRecordCommand(
             action: .startRecord,
             requestId: "req-123",
             timestamp: 1715155200000
         )
-        XCTAssertEqual(command, "V1|RECORD|1|1715155200000")
-        XCTAssertFalse(command.contains("req-123"))
+        XCTAssertEqual(command, "V1|RECORD|1|req-123|1715155200000")
+        XCTAssertTrue(command.contains("req-123"))
     }
 
-    func testRequestIdContainsActionCodePrefix() {
+    func testRecordCommandAppendsNonEmptyExtraFields() {
+        let command = ZnhaasBleClient.buildRecordCommand(
+            action: .startRecord,
+            requestId: "req-123",
+            timestamp: 1715155200000,
+            extraFields: [
+                "work_order": "WO-20250122",
+                "task_id": "TASK-01",
+                "empty_value": "",
+                " ": "ignored"
+            ]
+        )
+
+        XCTAssertTrue(command.contains("|work_order=WO-20250122"))
+        XCTAssertTrue(command.contains("|task_id=TASK-01"))
+        XCTAssertFalse(command.contains("empty_value="))
+        XCTAssertFalse(command.contains("ignored"))
+    }
+
+    func testRequestIdUsesReqPrefix() {
         let requestId = ZnhaasBleClient.buildRequestId(action: .disableVideoKey)
-        XCTAssertTrue(requestId.hasPrefix("3-"))
+        XCTAssertTrue(requestId.hasPrefix("req-"))
     }
 }
-

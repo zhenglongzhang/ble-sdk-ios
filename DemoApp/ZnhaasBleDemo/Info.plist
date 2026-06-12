@@ -24,6 +24,8 @@
 	<string>需要使用蓝牙扫描和连接 znhaas 安全帽设备，用于录制控制和状态回传。</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>需要使用蓝牙扫描和连接 znhaas 安全帽设备，用于录制控制和状态回传。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>需要使用相机完成工单扫码和拍照上传。</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -41,4 +43,3 @@
 	</array>
 </dict>
 </plist>
-

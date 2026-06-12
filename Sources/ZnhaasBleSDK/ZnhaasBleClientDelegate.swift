@@ -10,6 +10,7 @@ public protocol ZnhaasBleClientDelegate: AnyObject {
     func bleClient(_ client: ZnhaasBleClient, isConnectingTo device: ZnhaasBleDevice)
     func bleClient(_ client: ZnhaasBleClient, didConnect device: ZnhaasBleDevice)
     func bleClient(_ client: ZnhaasBleClient, didDiscoverServices services: [CBService], for device: ZnhaasBleDevice)
+    func bleClient(_ client: ZnhaasBleClient, didDiscoverCharacteristics characteristics: [CBCharacteristic], for service: CBService, device: ZnhaasBleDevice)
     func bleClient(_ client: ZnhaasBleClient, didBecomeReady device: ZnhaasBleDevice)
     func bleClient(_ client: ZnhaasBleClient, isDisconnectingFrom device: ZnhaasBleDevice)
     func bleClient(_ client: ZnhaasBleClient, didDisconnect device: ZnhaasBleDevice?, error: Error?)
@@ -35,6 +36,7 @@ public extension ZnhaasBleClientDelegate {
     func bleClient(_ client: ZnhaasBleClient, isConnectingTo device: ZnhaasBleDevice) {}
     func bleClient(_ client: ZnhaasBleClient, didConnect device: ZnhaasBleDevice) {}
     func bleClient(_ client: ZnhaasBleClient, didDiscoverServices services: [CBService], for device: ZnhaasBleDevice) {}
+    func bleClient(_ client: ZnhaasBleClient, didDiscoverCharacteristics characteristics: [CBCharacteristic], for service: CBService, device: ZnhaasBleDevice) {}
     func bleClient(_ client: ZnhaasBleClient, didBecomeReady device: ZnhaasBleDevice) {}
     func bleClient(_ client: ZnhaasBleClient, isDisconnectingFrom device: ZnhaasBleDevice) {}
     func bleClient(_ client: ZnhaasBleClient, didDisconnect device: ZnhaasBleDevice?, error: Error?) {}
@@ -50,4 +52,3 @@ public extension ZnhaasBleClientDelegate {
     ) {}
     func bleClient(_ client: ZnhaasBleClient, didFailWith error: ZnhaasBleError, device: ZnhaasBleDevice?) {}
 }
-

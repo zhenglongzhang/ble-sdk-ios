@@ -3,12 +3,13 @@ import Foundation
 
 public typealias ZnhaasBleWriteCompletion = (Result<ZnhaasBleWriteResult, ZnhaasBleError>) -> Void
 public typealias ZnhaasBleNotifyCompletion = (Result<Void, ZnhaasBleError>) -> Void
+public typealias ZnhaasBleReadCompletion = (Result<Void, ZnhaasBleError>) -> Void
 
 public final class ZnhaasBleClient: NSObject {
     public static let targetDeviceNamePrefix = "znhaas"
     public static let fixedServiceUUID = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
-    public static let fixedWriteCharacteristicUUID = CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
-    public static let fixedNotifyCharacteristicUUID = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
+    public static let fixedWriteCharacteristicUUID = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
+    public static let fixedNotifyCharacteristicUUID = CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
 
     private struct PendingWrite {
         let requestId: String?
@@ -23,6 +24,12 @@ public final class ZnhaasBleClient: NSObject {
         let characteristicUUID: CBUUID
         let enable: Bool
         let completion: ZnhaasBleNotifyCompletion?
+    }
+
+    private struct PendingRead {
+        let serviceUUID: CBUUID
+        let characteristicUUID: CBUUID
+        let completion: ZnhaasBleReadCompletion?
     }
 
     public weak var delegate: ZnhaasBleClientDelegate?
@@ -65,6 +72,7 @@ public final class ZnhaasBleClient: NSObject {
     private var notifyCharacteristic: CBCharacteristic?
     private var pendingWrites: [String: [PendingWrite]] = [:]
     private var pendingNotifyOperations: [String: PendingNotify] = [:]
+    private var pendingReadOperations: [String: [PendingRead]] = [:]
 
     public init(
         delegate: ZnhaasBleClientDelegate? = nil,
@@ -100,17 +108,50 @@ public final class ZnhaasBleClient: NSObject {
 
     public static func buildRequestId(action: ZnhaasRecordAction) -> String {
         let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
-        let suffix = UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(8)
-        return "\(action.code)-\(timestamp)-\(suffix)"
+        return "req-\(timestamp)"
     }
 
     public static func buildRecordCommand(
         action: ZnhaasRecordAction,
         requestId: String,
-        timestamp: Int64
+        timestamp: Int64,
+        extraFields: [String: String]? = nil
     ) -> String {
-        _ = requestId
-        return "V1|RECORD|\(action.code)|\(timestamp)"
+        var command = "V1|RECORD|\(action.code)|\(requestId)|\(timestamp)"
+        appendRecordFields(extraFields, to: &command)
+        return command
+    }
+
+    private static func appendRecordFields(_ extraFields: [String: String]?, to command: inout String) {
+        guard let extraFields, extraFields.isEmpty == false else {
+            return
+        }
+
+        for (key, value) in extraFields {
+            let sanitizedKey = sanitizeRecordKey(key)
+            let sanitizedValue = sanitizeRecordValue(value)
+            guard sanitizedKey.isEmpty == false, sanitizedValue.isEmpty == false else {
+                continue
+            }
+            command += "|\(sanitizedKey)=\(sanitizedValue)"
+        }
+    }
+
+    private static func sanitizeRecordKey(_ key: String) -> String {
+        key
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "|", with: "")
+            .replacingOccurrences(of: "=", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\r", with: "")
+    }
+
+    private static func sanitizeRecordValue(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "|", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\r", with: "")
     }
 
     public func startScan(duration: TimeInterval = 10, allowDuplicates: Bool = false) {
@@ -188,6 +229,35 @@ public final class ZnhaasBleClient: NSObject {
         )
     }
 
+    public func enableFixedServiceNotifications(completion: ZnhaasBleNotifyCompletion? = nil) {
+        guard let service = findService(uuid: Self.fixedServiceUUID) else {
+            let error = ZnhaasBleError.serviceNotFound(Self.fixedServiceUUID)
+            completeNotify(completion, with: .failure(error))
+            notifyFailure(error, device: connectedDevice)
+            return
+        }
+
+        let characteristics = service.characteristics ?? []
+        let notifiable = characteristics.filter { characteristic in
+            characteristic.properties.contains(.notify) || characteristic.properties.contains(.indicate)
+        }
+
+        guard notifiable.isEmpty == false else {
+            let error = ZnhaasBleError.notifyNotSupported(Self.fixedServiceUUID)
+            completeNotify(completion, with: .failure(error))
+            notifyFailure(error, device: connectedDevice)
+            return
+        }
+
+        notifiable.enumerated().forEach { index, characteristic in
+            enableNotification(
+                serviceUUID: Self.fixedServiceUUID,
+                characteristicUUID: characteristic.uuid,
+                completion: index == 0 ? completion : nil
+            )
+        }
+    }
+
     public func disableFixedNotification(completion: ZnhaasBleNotifyCompletion? = nil) {
         disableNotification(
             serviceUUID: Self.fixedServiceUUID,
@@ -255,6 +325,49 @@ public final class ZnhaasBleClient: NSObject {
             completion: completion
         )
         peripheral.setNotifyValue(false, for: characteristic)
+    }
+
+    public func read(
+        serviceUUID: CBUUID,
+        characteristicUUID: CBUUID,
+        completion: ZnhaasBleReadCompletion? = nil
+    ) {
+        guard let peripheral = currentPeripheral, peripheral.state == .connected else {
+            let error = ZnhaasBleError.notConnected
+            completeRead(completion, with: .failure(error))
+            notifyFailure(error, device: connectedDevice)
+            return
+        }
+
+        guard let characteristic = findCharacteristic(serviceUUID: serviceUUID, characteristicUUID: characteristicUUID) else {
+            let error = ZnhaasBleError.characteristicNotFound(characteristicUUID)
+            completeRead(completion, with: .failure(error))
+            notifyFailure(error, device: connectedDevice)
+            return
+        }
+
+        guard characteristic.properties.contains(.read) else {
+            let error = ZnhaasBleError.readNotSupported(characteristicUUID)
+            completeRead(completion, with: .failure(error))
+            notifyFailure(error, device: connectedDevice)
+            return
+        }
+
+        let key = buildKey(serviceUUID: serviceUUID, characteristicUUID: characteristicUUID)
+        pendingReadOperations[key, default: []].append(PendingRead(
+            serviceUUID: serviceUUID,
+            characteristicUUID: characteristicUUID,
+            completion: completion
+        ))
+        peripheral.readValue(for: characteristic)
+    }
+
+    public func readFixedReply(completion: ZnhaasBleReadCompletion? = nil) {
+        read(
+            serviceUUID: Self.fixedServiceUUID,
+            characteristicUUID: Self.fixedNotifyCharacteristicUUID,
+            completion: completion
+        )
     }
 
     public func write(
@@ -340,8 +453,18 @@ public final class ZnhaasBleClient: NSObject {
     }
 
     @discardableResult
+    public func startRecord(extraFields: [String: String], completion: ZnhaasBleWriteCompletion? = nil) -> String {
+        sendRecordAction(.startRecord, extraFields: extraFields, completion: completion)
+    }
+
+    @discardableResult
     public func stopRecord(completion: ZnhaasBleWriteCompletion? = nil) -> String {
         sendRecordAction(.stopRecord, completion: completion)
+    }
+
+    @discardableResult
+    public func stopRecord(extraFields: [String: String], completion: ZnhaasBleWriteCompletion? = nil) -> String {
+        sendRecordAction(.stopRecord, extraFields: extraFields, completion: completion)
     }
 
     @discardableResult
@@ -350,13 +473,28 @@ public final class ZnhaasBleClient: NSObject {
     }
 
     @discardableResult
+    public func queryRecordStatus(extraFields: [String: String], completion: ZnhaasBleWriteCompletion? = nil) -> String {
+        sendRecordAction(.queryStatus, extraFields: extraFields, completion: completion)
+    }
+
+    @discardableResult
     public func disableVideoKey(completion: ZnhaasBleWriteCompletion? = nil) -> String {
         sendRecordAction(.disableVideoKey, completion: completion)
     }
 
     @discardableResult
+    public func disableVideoKey(extraFields: [String: String], completion: ZnhaasBleWriteCompletion? = nil) -> String {
+        sendRecordAction(.disableVideoKey, extraFields: extraFields, completion: completion)
+    }
+
+    @discardableResult
     public func enableVideoKey(completion: ZnhaasBleWriteCompletion? = nil) -> String {
         sendRecordAction(.enableVideoKey, completion: completion)
+    }
+
+    @discardableResult
+    public func enableVideoKey(extraFields: [String: String], completion: ZnhaasBleWriteCompletion? = nil) -> String {
+        sendRecordAction(.enableVideoKey, extraFields: extraFields, completion: completion)
     }
 
     public func release() {
@@ -365,6 +503,7 @@ public final class ZnhaasBleClient: NSObject {
         stopScanWorkItem = nil
         pendingWrites.removeAll()
         pendingNotifyOperations.removeAll()
+        pendingReadOperations.removeAll()
         writeCharacteristic = nil
         notifyCharacteristic = nil
         if let peripheral = currentPeripheral, peripheral.state != .disconnected {
@@ -379,11 +518,17 @@ public final class ZnhaasBleClient: NSObject {
     @discardableResult
     private func sendRecordAction(
         _ action: ZnhaasRecordAction,
+        extraFields: [String: String]? = nil,
         completion: ZnhaasBleWriteCompletion? = nil
     ) -> String {
         let requestId = Self.buildRequestId(action: action)
         let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
-        let command = Self.buildRecordCommand(action: action, requestId: requestId, timestamp: timestamp)
+        let command = Self.buildRecordCommand(
+            action: action,
+            requestId: requestId,
+            timestamp: timestamp,
+            extraFields: extraFields
+        )
         writeFixedASCIICommand(command, requestId: requestId, completion: completion)
         return requestId
     }
@@ -437,7 +582,7 @@ public final class ZnhaasBleClient: NSObject {
 
     private func emit(_ callback: @escaping (ZnhaasBleClientDelegate) -> Void) {
         DispatchQueue.main.async { [weak self] in
-            guard let self, let delegate = self.delegate else {
+            guard let self = self, let delegate = self.delegate else {
                 return
             }
             callback(delegate)
@@ -468,6 +613,18 @@ public final class ZnhaasBleClient: NSObject {
         }
     }
 
+    private func completeRead(
+        _ completion: ZnhaasBleReadCompletion?,
+        with result: Result<Void, ZnhaasBleError>
+    ) {
+        guard let completion else {
+            return
+        }
+        DispatchQueue.main.async {
+            completion(result)
+        }
+    }
+
     private func notifyScanFailed(_ error: ZnhaasBleError) {
         emit { delegate in
             delegate.bleClient(self, didFailScan: error)
@@ -483,6 +640,7 @@ public final class ZnhaasBleClient: NSObject {
     private func clearConnectionState() {
         pendingWrites.removeAll()
         pendingNotifyOperations.removeAll()
+        pendingReadOperations.removeAll()
         writeCharacteristic = nil
         notifyCharacteristic = nil
     }
@@ -581,7 +739,7 @@ extension ZnhaasBleClient: CBPeripheralDelegate {
             notifyFailure(.serviceNotFound(Self.fixedServiceUUID), device: device)
             return
         }
-        peripheral.discoverCharacteristics([Self.fixedWriteCharacteristicUUID, Self.fixedNotifyCharacteristicUUID], for: service)
+        peripheral.discoverCharacteristics(nil, for: service)
     }
 
     public func peripheral(
@@ -598,6 +756,10 @@ extension ZnhaasBleClient: CBPeripheralDelegate {
         let characteristics = service.characteristics ?? []
         writeCharacteristic = characteristics.first(where: { $0.uuid == Self.fixedWriteCharacteristicUUID })
         notifyCharacteristic = characteristics.first(where: { $0.uuid == Self.fixedNotifyCharacteristicUUID })
+
+        emit { delegate in
+            delegate.bleClient(self, didDiscoverCharacteristics: characteristics, for: service, device: device)
+        }
 
         guard writeCharacteristic != nil else {
             notifyFailure(.characteristicNotFound(Self.fixedWriteCharacteristicUUID), device: device)
@@ -644,16 +806,25 @@ extension ZnhaasBleClient: CBPeripheralDelegate {
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
+        let serviceUUID = characteristic.service?.uuid ?? Self.fixedServiceUUID
+        let characteristicUUID = characteristic.uuid
+        let key = buildKey(serviceUUID: serviceUUID, characteristicUUID: characteristicUUID)
+        var readQueue = pendingReadOperations[key] ?? []
+        let pendingRead = readQueue.isEmpty ? nil : readQueue.removeFirst()
+        pendingReadOperations[key] = readQueue.isEmpty ? nil : readQueue
+
         if let error {
-            notifyFailure(.notifyFailed(error.localizedDescription), device: connectedDevice)
+            let wrappedError = pendingRead == nil
+                ? ZnhaasBleError.notifyFailed(error.localizedDescription)
+                : ZnhaasBleError.readFailed(error.localizedDescription)
+            completeRead(pendingRead?.completion, with: .failure(wrappedError))
+            notifyFailure(wrappedError, device: connectedDevice)
             return
         }
 
         let value = characteristic.value ?? Data()
         let stringValue = String(data: value, encoding: .utf8)
         let hexValue = value.hexString
-        let serviceUUID = characteristic.service?.uuid ?? Self.fixedServiceUUID
-        let characteristicUUID = characteristic.uuid
 
         emit { delegate in
             delegate.bleClient(
@@ -665,6 +836,7 @@ extension ZnhaasBleClient: CBPeripheralDelegate {
                 characteristicUUID: characteristicUUID
             )
         }
+        completeRead(pendingRead?.completion, with: .success(()))
     }
 
     public func peripheral(

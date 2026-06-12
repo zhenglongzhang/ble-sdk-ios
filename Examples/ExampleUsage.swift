@@ -21,7 +21,10 @@ final class ExampleViewController: UIViewController {
     }
 
     @IBAction func startRecordTapped(_ sender: UIButton) {
-        bleClient.startRecord { result in
+        bleClient.startRecord(extraFields: [
+            "work_order": "WO-20250122",
+            "task_id": "TASK-01"
+        ]) { result in
             switch result {
             case .success(let writeResult):
                 print("startRecord success: \(writeResult.stringValue ?? "")")
@@ -63,8 +66,8 @@ extension ExampleViewController: ZnhaasBleClientDelegate {
     }
 
     func bleClient(_ client: ZnhaasBleClient, didBecomeReady device: ZnhaasBleDevice) {
-        client.enableFixedNotification { result in
-            print("notify result: \(result)")
+        client.enableFixedServiceNotifications { result in
+            print("reply listener result: \(result)")
         }
     }
 
@@ -76,12 +79,16 @@ extension ExampleViewController: ZnhaasBleClientDelegate {
         serviceUUID: CBUUID,
         characteristicUUID: CBUUID
     ) {
-        print("notify string: \(stringValue ?? "")")
-        print("notify hex: \(hexValue)")
+        let ascii = stringValue ?? ""
+        if ascii.hasPrefix("V1|ACK|") {
+            print("device ACK: \(ascii)")
+        } else {
+            print("device reply: \(ascii)")
+        }
+        print("reply hex: \(hexValue)")
     }
 
     func bleClient(_ client: ZnhaasBleClient, didFailWith error: ZnhaasBleError, device: ZnhaasBleDevice?) {
         print("BLE error: \(error.localizedDescription)")
     }
 }
-
