@@ -1,17 +1,28 @@
+# macOS
 .DS_Store
+
+# Swift Package Manager
 .build/
 .build-ios/
 .cache/
 .swiftpm/
 Package.resolved
+
+# Xcode build artifacts
 DerivedData/
 .deriveddata/
-.sourcepackages-demo/
+.deriveddata-demo/
+build/
 DemoApp/build/
+*.xcresult
+*.moved-aside
+
+# Xcode user data
 xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 *.xcuserstate
-*.moved-aside
 *.xcscmblueprint
-*.xcresult
+
+# Demo local checkouts/cache
+.sourcepackages-demo/

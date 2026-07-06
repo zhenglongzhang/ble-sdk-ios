@@ -17,10 +17,10 @@
   - Service UUID：`6E400001-B5A3-F393-E0A9-E50E24DCCA9E`
   - Write UUID：`6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
   - Reply UUID：`6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
-- 设备业务 ACK 优先使用 Notify/Indicate 监听，ACK 格式以 `V1|ACK|...` 开头
-- 如果 Reply 特征只能 Read，可通过 SDK 读取一次作为诊断兜底；读到的 `RECORD|SUPPORTED` 属于能力说明，不代表本次命令 ACK
-- 封装 5 个录制控制动作
-- 控制命令支持可选追加任意键值对扩展字段，只有 key 和 value 都有值才会下发
+- 设备业务回复优先使用 Notify/Indicate 监听，v2 回复格式为 `2|R|...`
+- 如果 Reply 特征只能 Read，可通过 SDK 读取一次作为诊断兜底
+- 按《蓝牙录制控制协议 v2.0》封装录制控制动作
+- 控制命令使用固定 14 位字段：`work_order`、`task_id`、`device_id`
 
 ## 3. 环境要求
 
@@ -174,9 +174,9 @@ func bleClient(
 
 说明：
 
-- `enableFixedServiceNotifications(...)` 会监听固定 Service 下所有支持 Notify/Indicate 的特征，避免设备 ACK 不在固定 Reply UUID 上时漏收
+- `enableFixedServiceNotifications(...)` 会监听固定 Service 下所有支持 Notify/Indicate 的特征，避免设备回复不在固定 Reply UUID 上时漏收
 - 若固定 Reply 特征不支持 Notify/Indicate，但支持 Read，可在写入成功后调用 `readFixedReply(...)` 读取诊断值
-- 业务成功与否应以 `V1|ACK|...` 格式的 ACK 为准
+- 业务成功与否应以 v2 回复中的 `statusCode` 为准
 
 ## 7. 录制控制接口
 
@@ -185,24 +185,23 @@ func bleClient(
 当前 SDK 实际发送给设备的报文格式：
 
 ```text
-V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP
+VERSION|CMD_TYPE|COMMAND|ACTION|REQ_ID|TIMESTAMP|P1|P2|P3|P4|P5|P6|P7|P8\n
 ```
 
-带业务扩展字段时格式如下：
+命令下发固定使用：
 
 ```text
-V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP|key1=value1|key2=value2
+2|C|COMMAND|ACTION|REQ_ID|TIMESTAMP|work_order|task_id|device_id|||||
 ```
 
 ### 7.2 控制动作列表
 
-| 方法 | Action 值 | 说明 |
-| --- | --- | --- |
-| `startRecord(completion:)` | `1` | 开始录制 |
-| `stopRecord(completion:)` | `0` | 停止录制 |
-| `queryRecordStatus(completion:)` | `2` | 查询录制状态 |
-| `disableVideoKey(completion:)` | `3` | 禁止视频物理按键 |
-| `enableVideoKey(completion:)` | `4` | 启用视频物理按键 |
+| 方法 | COMMAND | ACTION | 说明 |
+| --- | --- | --- | --- |
+| `stopRecord(completion:)` | `0` | `0` | 停止录制 |
+| `disableVideoKey(completion:)` | `0` | `1` | 开始录制并禁用视频物理按键 |
+| `enableVideoKey(completion:)` | `0` | `2` | 开始录制并启用视频物理按键 |
+| `queryRecordStatus(completion:)` | `1` | `3` | 查询录制状态 |
 
 ### 7.3 调用示例
 
@@ -218,29 +217,31 @@ let requestId = bleClient.startRecord { result in
 }
 ```
 
-如需随指令追加业务字段：
+如需随指令下发固定业务字段：
 
 ```swift
 let requestId = bleClient.startRecord(extraFields: [
     "work_order": "WO-20250122",
-    "task_id": "TASK-01"
+    "task_id": "TASK-01",
+    "device_id": "31011500991325140052"
 ], completion: nil)
 ```
 
 H5 JSBridge 调用示例：
 
 ```js
-window.ZnhaasBleBridge.startRecord({
+window.ZnhaasBleBridge.disableVideoKey({
   work_order: 'WO-20250122',
-  task_id: 'TASK-01'
+  task_id: 'TASK-01',
+  device_id: '31011500991325140052'
 })
 ```
 
 说明：
 
 - `requestId` 仅用于业务侧日志关联
-- `requestId` 会拼接进设备控制报文，用于和设备返回的 `V1|ACK|...` 进行链路关联
-- 扩展字段会追加在指令末尾，例如：`V1|RECORD|1|req-1705939230000|1705939230000|work_order=WO-20250122|task_id=TASK-01`
+- `requestId` 会拼接进设备控制报文，用于和设备返回的 v2 回复进行链路关联
+- 开始/停止录制会下发 `work_order`、`task_id`、`device_id` 固定字段，其中 `device_id` 可选
 
 ## 8. 常用 API 速查
 

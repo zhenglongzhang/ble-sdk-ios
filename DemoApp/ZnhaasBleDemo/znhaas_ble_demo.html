@@ -23,6 +23,13 @@
       box-sizing: border-box;
     }
 
+    html {
+      -webkit-text-size-adjust: 100%;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -31,7 +38,28 @@
         linear-gradient(160deg, #f7fbff 0%, var(--bg) 50%, #e8f7f4 100%);
       color: var(--ink);
       font-family: "Avenir Next", "PingFang SC", sans-serif;
-      padding: max(22px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+      overscroll-behavior: none;
+      padding: calc(22px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
+    }
+
+    a,
+    button {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .back-link {
+      align-items: center;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      box-shadow: 0 10px 24px rgba(31, 49, 71, 0.09);
+      color: var(--brand);
+      display: inline-flex;
+      font-size: 13px;
+      font-weight: 800;
+      margin: 0 0 16px;
+      padding: 9px 13px;
+      text-decoration: none;
     }
 
     .hero {
@@ -265,10 +293,12 @@
   </style>
 </head>
 <body>
+  <a class="back-link" href="znhaas_app_tests.html">返回测试入口</a>
+
   <section class="hero">
     <div class="eyebrow">Znhaas BLE JSBridge</div>
     <h1>H5 控制蓝牙安全帽</h1>
-    <p class="subtitle">页面通过 iOS WKWebView JSBridge 调用原生 BLE SDK，支持扫描、连接、录像控制和 ACK 监听。</p>
+    <p class="subtitle">页面通过 iOS WKWebView JSBridge 调用原生 BLE SDK，支持扫描、连接、v2 录像控制和设备回复监听。</p>
   </section>
 
   <section class="card">
@@ -312,36 +342,31 @@
   <section class="card">
     <div class="card-title">
       <h2>录像控制</h2>
-      <span class="pill">V1|RECORD</span>
+      <span class="pill">Protocol v2</span>
     </div>
     <div class="field-stack">
       <div class="field-row">
         <label class="field">
-          <span>扩展字段名 1</span>
-          <input id="extraKey1" type="text" inputmode="text" autocomplete="off" value="work_order" placeholder="work_order">
+          <span>工单号 work_order</span>
+          <input id="workOrder" type="text" inputmode="text" autocomplete="off" placeholder="WO-20250122">
         </label>
         <label class="field">
-          <span>扩展字段值 1</span>
-          <input id="extraValue1" type="text" inputmode="text" autocomplete="off" placeholder="WO-20250122">
+          <span>任务号 task_id</span>
+          <input id="taskId" type="text" inputmode="text" autocomplete="off" placeholder="TASK-01">
         </label>
       </div>
       <div class="field-row">
         <label class="field">
-          <span>扩展字段名 2</span>
-          <input id="extraKey2" type="text" inputmode="text" autocomplete="off" value="task_id" placeholder="task_id">
-        </label>
-        <label class="field">
-          <span>扩展字段值 2</span>
-          <input id="extraValue2" type="text" inputmode="text" autocomplete="off" placeholder="TASK-01">
+          <span>设备ID device_id</span>
+          <input id="deviceId" type="text" inputmode="text" autocomplete="off" placeholder="31011500991325140052">
         </label>
       </div>
     </div>
     <div class="grid">
-      <button onclick="callCommand('startRecord')">开始录制</button>
+      <button onclick="callCommand('disableVideoKey')">开始录制+禁用物理键</button>
+      <button onclick="callCommand('enableVideoKey')">开始录制+启用物理键</button>
       <button onclick="callCommand('stopRecord')">停止录制</button>
       <button onclick="callCommand('queryRecordStatus')">查询状态</button>
-      <button onclick="callCommand('disableVideoKey')">禁用视频键</button>
-      <button onclick="callCommand('enableVideoKey')">启用视频键</button>
     </div>
   </section>
 
@@ -431,15 +456,15 @@
 
     function getCommandExtras() {
       const extras = {};
-      collectExtraField(extras, 'extraKey1', 'extraValue1');
-      collectExtraField(extras, 'extraKey2', 'extraValue2');
+      collectFixedField(extras, 'work_order', 'workOrder');
+      collectFixedField(extras, 'task_id', 'taskId');
+      collectFixedField(extras, 'device_id', 'deviceId');
       return extras;
     }
 
-    function collectExtraField(extras, keyId, valueId) {
-      const key = getInputValue(keyId);
-      const value = getInputValue(valueId);
-      if (key && value) {
+    function collectFixedField(extras, key, inputId) {
+      const value = getInputValue(inputId);
+      if (value) {
         extras[key] = value;
       }
     }
@@ -496,7 +521,10 @@
         log('Write success: ' + data.value);
       }
       if (type === 'deviceAck') {
-        log('Device ACK: ' + data.value);
+        log('Device response: ' + data.value);
+        if (data.response) {
+          log('V2 Response: ' + formatV2Response(data.response));
+        }
       }
       if (type === 'deviceReply') {
         const prefix = data.isReadFallback ? 'Read fallback value (not ACK): ' : 'Device reply: ';
@@ -540,6 +568,20 @@
     function formatDevice(device) {
       if (!device) return '-';
       return (device.displayName || device.name || '-') + ' / ' + (device.identifier || device.address || '-');
+    }
+
+    function formatV2Response(response) {
+      const parts = [
+        response.actionText || response.action,
+        response.success ? 'SUCCESS' : (response.statusText || response.statusCode),
+        response.requestId || '',
+      ];
+      if (response.filePath) parts.push('filePath=' + response.filePath);
+      if (response.bucketName) parts.push('bucket=' + response.bucketName);
+      if (response.recordingState) parts.push('recordingState=' + response.recordingState);
+      if (response.battery) parts.push('battery=' + response.battery);
+      if (response.rssi) parts.push('rssi=' + response.rssi);
+      return parts.filter(Boolean).join(', ');
     }
 
     function setText(id, value) {

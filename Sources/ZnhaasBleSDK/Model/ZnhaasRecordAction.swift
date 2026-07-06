@@ -1,14 +1,32 @@
 import Foundation
 
-public enum ZnhaasRecordAction: String, CaseIterable {
-    case startRecord = "1"
-    case stopRecord = "0"
-    case queryStatus = "2"
-    case disableVideoKey = "3"
-    case enableVideoKey = "4"
+public enum ZnhaasRecordAction: CaseIterable {
+    case startRecord
+    case stopRecord
+    case queryStatus
+    case disableVideoKey
+    case enableVideoKey
+
+    public var commandCode: String {
+        switch self {
+        case .queryStatus:
+            return "1"
+        default:
+            return "0"
+        }
+    }
 
     public var code: String {
-        rawValue
+        switch self {
+        case .stopRecord:
+            return "0"
+        case .startRecord, .disableVideoKey:
+            return "1"
+        case .enableVideoKey:
+            return "2"
+        case .queryStatus:
+            return "3"
+        }
     }
 
     public var title: String {
@@ -26,4 +44,3 @@ public enum ZnhaasRecordAction: String, CaseIterable {
         }
     }
 }
-

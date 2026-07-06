@@ -117,33 +117,37 @@ public final class ZnhaasBleClient: NSObject {
         timestamp: Int64,
         extraFields: [String: String]? = nil
     ) -> String {
-        var command = "V1|RECORD|\(action.code)|\(requestId)|\(timestamp)"
-        appendRecordFields(extraFields, to: &command)
-        return command
+        var fields = [
+            "2",
+            "C",
+            action.commandCode,
+            action.code,
+            sanitizeRecordValue(requestId),
+            String(timestamp)
+        ]
+        if action == .queryStatus {
+            fields.append(contentsOf: ["", "", ""])
+        } else {
+            fields.append(recordField(extraFields, keys: ["work_order", "workOrder", "work-order"]))
+            fields.append(recordField(extraFields, keys: ["task_id", "taskId", "task-id"]))
+            fields.append(recordField(extraFields, keys: ["device_id", "deviceId", "device-id"]))
+        }
+        while fields.count < 14 {
+            fields.append("")
+        }
+        return fields.joined(separator: "|") + "\n"
     }
 
-    private static func appendRecordFields(_ extraFields: [String: String]?, to command: inout String) {
-        guard let extraFields, extraFields.isEmpty == false else {
-            return
+    private static func recordField(_ extraFields: [String: String]?, keys: [String]) -> String {
+        guard let extraFields else {
+            return ""
         }
-
-        for (key, value) in extraFields {
-            let sanitizedKey = sanitizeRecordKey(key)
-            let sanitizedValue = sanitizeRecordValue(value)
-            guard sanitizedKey.isEmpty == false, sanitizedValue.isEmpty == false else {
-                continue
+        for key in keys {
+            if let value = extraFields[key] {
+                return sanitizeRecordValue(value)
             }
-            command += "|\(sanitizedKey)=\(sanitizedValue)"
         }
-    }
-
-    private static func sanitizeRecordKey(_ key: String) -> String {
-        key
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "|", with: "")
-            .replacingOccurrences(of: "=", with: "")
-            .replacingOccurrences(of: "\n", with: "")
-            .replacingOccurrences(of: "\r", with: "")
+        return ""
     }
 
     private static func sanitizeRecordValue(_ value: String) -> String {

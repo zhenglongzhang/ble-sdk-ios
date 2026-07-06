@@ -11,10 +11,10 @@
   - Service UUID: `6E400001-B5A3-F393-E0A9-E50E24DCCA9E`
   - Write UUID: `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
   - Reply UUID: `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
-- 设备业务 ACK 优先使用 Notify/Indicate 监听，ACK 格式以 `V1|ACK|...` 开头
-- 如果 Reply 特征只能 Read，Demo 会在写入成功后读取一次作为诊断兜底；读到的 `RECORD|SUPPORTED` 属于能力说明，不代表本次命令 ACK
-- 按照业务控制协议封装 5 个控制动作
-- 控制命令支持可选追加任意键值对扩展字段，只有 key 和 value 都有值才会下发
+- 设备业务回复优先使用 Notify/Indicate 监听，v2 回复格式为 `2|R|...`
+- 如果 Reply 特征只能 Read，Demo 会在写入成功后读取一次作为诊断兜底
+- 按照《蓝牙录制控制协议 v2.0》封装录制控制动作
+- 控制命令使用固定 14 位字段：`work_order`、`task_id`、`device_id`
 - 基于 iOS 原生 `CoreBluetooth` 实现，不依赖第三方 BLE 库
 
 ## 工程结构
@@ -28,37 +28,34 @@
 - `Examples/ExampleUsage.swift`
   - UIKit 接入示例
 
-## 5 个控制动作
+## 录制控制协议 v2
 
 协议统一格式：
 
 ```text
-V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP
+VERSION|CMD_TYPE|COMMAND|ACTION|REQ_ID|TIMESTAMP|P1|P2|P3|P4|P5|P6|P7|P8\n
 ```
 
-带业务扩展字段时格式如下：
+当前下发命令固定使用：
 
 ```text
-V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP|key1=value1|key2=value2
+2|C|COMMAND|ACTION|REQ_ID|TIMESTAMP|work_order|task_id|device_id|||||
 ```
 
-当前封装的 5 个动作如下：
+当前封装动作如下：
 
-1. 开始录制：`ACTION = 1`
-2. 停止录制：`ACTION = 0`
-3. 查询状态：`ACTION = 2`
-4. 禁止视频物理按键：`ACTION = 3`
-5. 启用视频物理按键：`ACTION = 4`
+1. 停止录制：`COMMAND=0`，`ACTION=0`
+2. 开始录制并禁用视频物理按键：`COMMAND=0`，`ACTION=1`
+3. 开始录制并启用视频物理按键：`COMMAND=0`，`ACTION=2`
+4. 查询状态：`COMMAND=1`，`ACTION=3`
 
 示例：
 
 ```text
-V1|RECORD|1|req-1715155200000|1715155200000
-V1|RECORD|0|req-1715155205000|1715155205000
-V1|RECORD|2|req-1715155210000|1715155210000
-V1|RECORD|3|req-1715155215000|1715155215000
-V1|RECORD|4|req-1715155220000|1715155220000
-V1|RECORD|1|req-1705939230000|1705939230000|work_order=WO-20250122|task_id=TASK-01
+2|C|0|1|req-1705939230000|1705939230000|WO-20250122|TASK-01|31011500991325140052|||||
+2|C|0|2|req-1705939230000|1705939230000|WO-20250122|TASK-01|31011500991325140052|||||
+2|C|0|0|req-1705939300000|1705939300000|WO-20250122|TASK-01|31011500991325140052|||||
+2|C|1|3|req-1705939400000|1705939400000||||||||
 ```
 
 ## 接入方式
@@ -87,8 +84,8 @@ Demo 提供以下能力：
 - 点击设备进行连接
 - 自动监听固定 Service 下所有支持 Notify/Indicate 的特征
 - H5 通过 `window.ZnhaasBleBridge` 调用原生 BLE 能力
-- 点击 5 个录制控制按钮发送命令，并支持传任意键值对扩展字段
-- 在页面底部实时查看连接日志、写入结果和设备 ACK
+- 点击 4 个录制控制按钮发送 v2 命令
+- 在页面底部实时查看连接日志、写入结果和设备回复
 
 说明：
 
@@ -167,7 +164,7 @@ func bleClient(_ client: ZnhaasBleClient, didBecomeReady device: ZnhaasBleDevice
 }
 ```
 
-### 4. 发送 5 个控制动作
+### 4. 发送录制控制动作
 
 ```swift
 let requestId = bleClient.startRecord { result in
@@ -180,12 +177,13 @@ let requestId = bleClient.startRecord { result in
 }
 ```
 
-如需追加业务字段：
+如需下发固定业务字段。当前 v2 协议只取 `work_order`、`task_id`、`device_id`：
 
 ```swift
 let requestId = bleClient.startRecord(extraFields: [
     "work_order": "WO-20250122",
-    "task_id": "TASK-01"
+    "task_id": "TASK-01",
+    "device_id": "31011500991325140052"
 ], completion: nil)
 ```
 
@@ -202,14 +200,15 @@ let requestId = bleClient.startRecord(extraFields: [
 - `disableVideoKey(extraFields:completion:)`
 - `enableVideoKey(extraFields:completion:)`
 
-`requestId` 用于业务侧日志关联；当前 SDK 实际下发给设备的控制报文格式为 `V1|RECORD|ACTION|REQUEST_ID|TIMESTAMP`，也可追加任意非空键值对。
+`requestId` 用于业务侧日志关联；当前 SDK 实际下发给设备的是 v2 固定 14 位控制报文。
 
 H5 JSBridge 示例：
 
 ```js
-window.ZnhaasBleBridge.startRecord({
+window.ZnhaasBleBridge.disableVideoKey({
   work_order: 'WO-20250122',
-  task_id: 'TASK-01'
+  task_id: 'TASK-01',
+  device_id: '31011500991325140052'
 })
 ```
 
@@ -231,8 +230,8 @@ func bleClient(
 
 说明：
 
-- 业务 ACK 以 `V1|ACK|...` 开头，例如 `V1|ACK|RECORD|SUCCESS|req-...|...|state=RECORDING`
-- 如果 Demo 显示 `Read fallback value (not ACK)`，说明这是读取到的诊断值，不是设备 ACK
+- v2 业务回复以 `2|R|...` 开头，Demo 会在 `data.response` 中提供结构化字段
+- 如果 Demo 显示 `Read fallback value (not ACK)`，说明这是读取到的诊断值，不是设备业务回复
 
 ## 关键 API
 

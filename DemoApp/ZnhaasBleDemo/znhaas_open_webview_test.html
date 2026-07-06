@@ -17,6 +17,12 @@
       --shadow: 0 16px 36px rgba(44, 57, 108, 0.14);
     }
     * { box-sizing: border-box; }
+    html {
+      -webkit-text-size-adjust: 100%;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
     body {
       margin: 0;
       min-height: 100vh;
@@ -25,9 +31,11 @@
         linear-gradient(150deg, #fbfcff 0%, var(--bg) 100%);
       color: var(--ink);
       font-family: "Avenir Next", "PingFang SC", sans-serif;
-      padding: 20px 15px 32px;
+      overscroll-behavior: none;
+      padding: calc(20px + env(safe-area-inset-top)) 15px calc(32px + env(safe-area-inset-bottom));
     }
     a { color: var(--brand); text-decoration: none; font-weight: 800; }
+    a, button { -webkit-tap-highlight-color: transparent; }
     h1 { font-size: 30px; margin: 14px 0 8px; letter-spacing: -0.04em; }
     .subtitle { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0 0 16px; }
     .card {

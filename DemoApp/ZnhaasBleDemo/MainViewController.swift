@@ -20,7 +20,7 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Znhaas AppBridge Demo"
+        title = "龙湖电梯维保"
         bleClient.delegate = self
         setupWebView()
         loadDemoPage()
@@ -41,20 +41,27 @@ final class MainViewController: UIViewController {
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true
         ))
+        userContentController.addUserScript(WKUserScript(
+            source: h5ViewportLockScript(),
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        ))
 
         let configuration = WKWebViewConfiguration()
         configuration.userContentController = userContentController
 
         webView = WKWebView(frame: .zero, configuration: configuration)
+        configureH5WebView(webView)
         webView.navigationDelegate = self
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
 
+        let safeArea = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            webView.topAnchor.constraint(equalTo: view.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            webView.topAnchor.constraint(equalTo: safeArea.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor)
         ])
     }
 
@@ -460,6 +467,108 @@ final class MainViewController: UIViewController {
         }
     }
 
+    private func parseV2Response(_ value: String) -> [String: Any]? {
+        let rawParts = value.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "|")
+        guard let parts = normalizeV2ResponseParts(rawParts) else {
+            return nil
+        }
+        guard parts.count >= 14, parts[0] == "2", parts[1] == "R" else {
+            return nil
+        }
+        let statusCode = parts[13]
+        var response: [String: Any] = [
+            "version": parts[0],
+            "cmdType": parts[1],
+            "command": parts[2],
+            "commandText": commandText(parts[2]),
+            "action": parts[3],
+            "actionText": actionText(parts[3]),
+            "requestId": parts[4],
+            "timestamp": parts[5],
+            "workOrder": parts[6],
+            "taskId": parts[7],
+            "deviceId": parts[8],
+            "battery": parts[9],
+            "rssi": parts[10],
+            "filePath": parts[11],
+            "bucketName": parts[12],
+            "statusCode": statusCode,
+            "statusText": statusText(statusCode),
+            "success": statusCode == "0"
+        ]
+        if parts[2] == "1", parts[11].isEmpty == false {
+            response["recordingState"] = parts[11]
+            response["recording"] = parts[11] == "1"
+        }
+        return response
+    }
+
+    private func normalizeV2ResponseParts(_ rawParts: [String]) -> [String]? {
+        guard rawParts.count >= 14 else {
+            return nil
+        }
+        if rawParts.count == 14 {
+            return rawParts
+        }
+        var parts = Array(repeating: "", count: 14)
+        for index in 0..<min(9, rawParts.count) {
+            parts[index] = rawParts[index]
+        }
+        if rawParts[safe: 2] == "1", rawParts[safe: 3] == "3" {
+            let tailStart = rawParts.count - 5
+            parts[9] = rawParts[safe: tailStart] ?? ""
+            parts[10] = rawParts[safe: tailStart + 1] ?? ""
+            parts[11] = rawParts[safe: tailStart + 2] ?? ""
+            parts[12] = rawParts[safe: tailStart + 3] ?? ""
+            parts[13] = rawParts[safe: tailStart + 4] ?? ""
+            return parts
+        }
+        for index in 9..<min(13, rawParts.count) {
+            parts[index] = rawParts[index]
+        }
+        parts[13] = rawParts.last ?? ""
+        return parts
+    }
+
+    private func commandText(_ command: String) -> String {
+        switch command {
+        case "0":
+            return "RECORD"
+        case "1":
+            return "STATUS"
+        default:
+            return "UNKNOWN"
+        }
+    }
+
+    private func actionText(_ action: String) -> String {
+        switch action {
+        case "0":
+            return "STOP_RECORD"
+        case "1":
+            return "START_RECORD_DISABLE_KEY"
+        case "2":
+            return "START_RECORD_ENABLE_KEY"
+        case "3":
+            return "QUERY_STATUS"
+        default:
+            return "UNKNOWN"
+        }
+    }
+
+    private func statusText(_ statusCode: String) -> String {
+        switch statusCode {
+        case "0":
+            return "SUCCESS"
+        case "1":
+            return "FAILED"
+        case "2":
+            return "PARAM_ERROR"
+        default:
+            return "UNKNOWN"
+        }
+    }
+
     private func hasReplyListener() -> Bool {
         enabledReplyCharacteristicUUIDs.isEmpty == false
     }
@@ -605,6 +714,79 @@ final class MainViewController: UIViewController {
         }
         return "\(labels.joined(separator: "|")) (\(properties.rawValue))"
     }
+}
+
+private extension Array where Element == String {
+    subscript(safe index: Int) -> String? {
+        guard indices.contains(index) else {
+            return nil
+        }
+        return self[index]
+    }
+}
+
+private func configureH5WebView(_ webView: WKWebView) {
+    webView.allowsLinkPreview = false
+    let scrollView = webView.scrollView
+    scrollView.bounces = false
+    scrollView.alwaysBounceVertical = false
+    scrollView.alwaysBounceHorizontal = false
+    scrollView.bouncesZoom = false
+    scrollView.minimumZoomScale = 1.0
+    scrollView.maximumZoomScale = 1.0
+    scrollView.zoomScale = 1.0
+    scrollView.pinchGestureRecognizer?.isEnabled = false
+}
+
+private func h5ViewportLockScript() -> String {
+    """
+    (function() {
+      function installInteractionLock() {
+        if (!document.documentElement) { return; }
+        var css = [
+          'html, body { -webkit-text-size-adjust: 100%; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
+          'body { overscroll-behavior: none; }',
+          'a, button { -webkit-tap-highlight-color: transparent; }',
+          'input, textarea { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }'
+        ].join('\\n');
+        var style = document.getElementById('znhaas-ios-webview-lock');
+        if (!style && document.head) {
+          style = document.createElement('style');
+          style.id = 'znhaas-ios-webview-lock';
+          document.head.appendChild(style);
+        }
+        if (style) {
+          style.textContent = css;
+        }
+      }
+      function lockViewport() {
+        if (!document.head) { return; }
+        var content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover';
+        var meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) {
+          meta = document.createElement('meta');
+          meta.name = 'viewport';
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', content);
+        if (document.documentElement && document.documentElement.style) {
+          document.documentElement.style.webkitTextSizeAdjust = '100%';
+        }
+        installInteractionLock();
+      }
+      document.addEventListener('contextmenu', function(event) { event.preventDefault(); }, true);
+      document.addEventListener('selectstart', function(event) {
+        var tag = event.target && event.target.tagName ? event.target.tagName.toLowerCase() : '';
+        if (tag !== 'input' && tag !== 'textarea') {
+          event.preventDefault();
+        }
+      }, true);
+      installInteractionLock();
+      lockViewport();
+      document.addEventListener('DOMContentLoaded', lockViewport);
+      window.addEventListener('load', lockViewport);
+    })();
+    """
 }
 
 extension MainViewController: WKNavigationDelegate {
@@ -785,15 +967,22 @@ extension MainViewController: ZnhaasBleClientDelegate {
     ) {
         let ascii = stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let isReadFallbackValue = pendingReadFallback && characteristicUUID == ZnhaasBleClient.fixedNotifyCharacteristicUUID
-        let data: [String: Any] = [
+        let response = parseV2Response(ascii)
+        let isV2Response = response != nil
+        let isAck = isV2Response || ascii.hasPrefix("V1|ACK|")
+        var data: [String: Any] = [
             "serviceUuid": serviceUUID.uuidString,
             "characteristicUuid": characteristicUUID.uuidString,
             "value": ascii,
             "hexValue": hexValue,
-            "isAck": ascii.hasPrefix("V1|ACK|"),
+            "isAck": isAck,
+            "isV2Response": isV2Response,
             "isReadFallback": isReadFallbackValue
         ]
-        emit(ascii.hasPrefix("V1|ACK|") ? "deviceAck" : "deviceReply", data: data)
+        if let response {
+            data["response"] = response
+        }
+        emit(isAck ? "deviceAck" : "deviceReply", data: data)
         if isReadFallbackValue {
             pendingReadFallback = false
         }
@@ -1020,18 +1209,21 @@ private final class ZnhaasAppWebViewController: UIViewController, WKNavigationDe
         let controller = WKUserContentController()
         controller.add(self, name: appBridgeName)
         controller.addUserScript(WKUserScript(source: appBridgeScript(), injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        controller.addUserScript(WKUserScript(source: h5ViewportLockScript(), injectionTime: .atDocumentStart, forMainFrameOnly: true))
 
         let configuration = WKWebViewConfiguration()
         configuration.userContentController = controller
         webView = WKWebView(frame: .zero, configuration: configuration)
+        configureH5WebView(webView)
         webView.navigationDelegate = self
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
+        let safeArea = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            webView.topAnchor.constraint(equalTo: view.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            webView.topAnchor.constraint(equalTo: safeArea.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor)
         ])
     }
 

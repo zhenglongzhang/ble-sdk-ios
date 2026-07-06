@@ -21,15 +21,16 @@ final class ExampleViewController: UIViewController {
     }
 
     @IBAction func startRecordTapped(_ sender: UIButton) {
-        bleClient.startRecord(extraFields: [
+        bleClient.disableVideoKey(extraFields: [
             "work_order": "WO-20250122",
-            "task_id": "TASK-01"
+            "task_id": "TASK-01",
+            "device_id": "31011500991325140052"
         ]) { result in
             switch result {
             case .success(let writeResult):
-                print("startRecord success: \(writeResult.stringValue ?? "")")
+                print("start record and disable key success: \(writeResult.stringValue ?? "")")
             case .failure(let error):
-                print("startRecord failed: \(error.localizedDescription)")
+                print("start record and disable key failed: \(error.localizedDescription)")
             }
         }
     }
@@ -80,8 +81,8 @@ extension ExampleViewController: ZnhaasBleClientDelegate {
         characteristicUUID: CBUUID
     ) {
         let ascii = stringValue ?? ""
-        if ascii.hasPrefix("V1|ACK|") {
-            print("device ACK: \(ascii)")
+        if ascii.hasPrefix("2|R|") {
+            print("device v2 response: \(ascii)")
         } else {
             print("device reply: \(ascii)")
         }

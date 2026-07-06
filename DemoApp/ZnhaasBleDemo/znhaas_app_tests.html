@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Znhaas AppBridge Tests</title>
+  <title>龙湖电梯维保 AppBridge Tests</title>
   <style>
     :root {
       --bg: #f1f6ef;
@@ -16,6 +16,12 @@
       --shadow: 0 18px 40px rgba(35, 63, 46, 0.14);
     }
     * { box-sizing: border-box; }
+    html {
+      -webkit-text-size-adjust: 100%;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
     body {
       margin: 0;
       min-height: 100vh;
@@ -24,8 +30,10 @@
         linear-gradient(145deg, #fbf8ed 0%, var(--bg) 56%, #e7f2ea 100%);
       color: var(--ink);
       font-family: "Avenir Next", "PingFang SC", sans-serif;
-      padding: 24px 16px 34px;
+      overscroll-behavior: none;
+      padding: calc(24px + env(safe-area-inset-top)) 16px calc(34px + env(safe-area-inset-bottom));
     }
+    a, button { -webkit-tap-highlight-color: transparent; }
     .hero { margin: 8px 2px 22px; }
     .eyebrow {
       color: var(--accent);
@@ -91,7 +99,7 @@
 </head>
 <body>
   <section class="hero">
-    <div class="eyebrow">Znhaas AppBridge</div>
+    <div class="eyebrow">Longfor AppBridge</div>
     <h1>工单 H5 能力测试入口</h1>
     <p class="subtitle">这个页面用于集中测试 WebView 内的原生能力。当前已接入扫码、拍照、网络状态和打开新 WebView，BLE 控制页保留原有测试入口。</p>
   </section>

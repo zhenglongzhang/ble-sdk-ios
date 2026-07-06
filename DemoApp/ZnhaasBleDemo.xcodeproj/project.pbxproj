@@ -11,13 +11,6 @@
 		A10000000000000000000022 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* MainViewController.swift */; };
 		A10000000000000000000023 /* DeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* DeviceCell.swift */; };
 		A10000000000000000000024 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* LaunchScreen.storyboard */; };
-		A1000000000000000000002C /* znhaas_ble_demo.html in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001D /* znhaas_ble_demo.html */; };
-		A10000000000000000000080 /* znhaas_app_tests.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000070 /* znhaas_app_tests.html */; };
-		A10000000000000000000081 /* znhaas_scan_code_test.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000071 /* znhaas_scan_code_test.html */; };
-		A10000000000000000000082 /* znhaas_take_photo_test.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000072 /* znhaas_take_photo_test.html */; };
-		A10000000000000000000083 /* znhaas_network_test.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000073 /* znhaas_network_test.html */; };
-		A10000000000000000000084 /* znhaas_open_webview_test.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000074 /* znhaas_open_webview_test.html */; };
-		A10000000000000000000085 /* znhaas_webview_target.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000075 /* znhaas_webview_target.html */; };
 		A10000000000000000000025 /* ZnhaasBleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* ZnhaasBleClient.swift */; };
 		A10000000000000000000026 /* ZnhaasBleClientDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* ZnhaasBleClientDelegate.swift */; };
 		A10000000000000000000027 /* ZnhaasBleDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* ZnhaasBleDevice.swift */; };
@@ -25,6 +18,14 @@
 		A10000000000000000000029 /* ZnhaasRecordAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001A /* ZnhaasRecordAction.swift */; };
 		A1000000000000000000002A /* Data+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001B /* Data+Hex.swift */; };
 		A1000000000000000000002B /* ZnhaasBleError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001C /* ZnhaasBleError.swift */; };
+		A1000000000000000000002C /* znhaas_ble_demo.html in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001D /* znhaas_ble_demo.html */; };
+		A10000000000000000000080 /* znhaas_app_tests.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000070 /* znhaas_app_tests.html */; };
+		A10000000000000000000081 /* znhaas_scan_code_test.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000071 /* znhaas_scan_code_test.html */; };
+		A10000000000000000000082 /* znhaas_take_photo_test.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000072 /* znhaas_take_photo_test.html */; };
+		A10000000000000000000083 /* znhaas_network_test.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000073 /* znhaas_network_test.html */; };
+		A10000000000000000000084 /* znhaas_open_webview_test.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000074 /* znhaas_open_webview_test.html */; };
+		A10000000000000000000085 /* znhaas_webview_target.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000075 /* znhaas_webview_target.html */; };
+		A10000000000000000000086 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000076 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,13 +35,6 @@
 		A10000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000014 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A10000000000000000000015 /* DeviceCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCell.swift; sourceTree = "<group>"; };
-		A1000000000000000000001D /* znhaas_ble_demo.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_ble_demo.html; sourceTree = "<group>"; };
-		A10000000000000000000070 /* znhaas_app_tests.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_app_tests.html; sourceTree = "<group>"; };
-		A10000000000000000000071 /* znhaas_scan_code_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_scan_code_test.html; sourceTree = "<group>"; };
-		A10000000000000000000072 /* znhaas_take_photo_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_take_photo_test.html; sourceTree = "<group>"; };
-		A10000000000000000000073 /* znhaas_network_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_network_test.html; sourceTree = "<group>"; };
-		A10000000000000000000074 /* znhaas_open_webview_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_open_webview_test.html; sourceTree = "<group>"; };
-		A10000000000000000000075 /* znhaas_webview_target.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_webview_target.html; sourceTree = "<group>"; };
 		A10000000000000000000016 /* ZnhaasBleClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZnhaasBleClient.swift; sourceTree = "<group>"; };
 		A10000000000000000000017 /* ZnhaasBleClientDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZnhaasBleClientDelegate.swift; sourceTree = "<group>"; };
 		A10000000000000000000018 /* ZnhaasBleDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZnhaasBleDevice.swift; sourceTree = "<group>"; };
@@ -48,6 +42,14 @@
 		A1000000000000000000001A /* ZnhaasRecordAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZnhaasRecordAction.swift; sourceTree = "<group>"; };
 		A1000000000000000000001B /* Data+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Hex.swift"; sourceTree = "<group>"; };
 		A1000000000000000000001C /* ZnhaasBleError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZnhaasBleError.swift; sourceTree = "<group>"; };
+		A1000000000000000000001D /* znhaas_ble_demo.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_ble_demo.html; sourceTree = "<group>"; };
+		A10000000000000000000070 /* znhaas_app_tests.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_app_tests.html; sourceTree = "<group>"; };
+		A10000000000000000000071 /* znhaas_scan_code_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_scan_code_test.html; sourceTree = "<group>"; };
+		A10000000000000000000072 /* znhaas_take_photo_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_take_photo_test.html; sourceTree = "<group>"; };
+		A10000000000000000000073 /* znhaas_network_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_network_test.html; sourceTree = "<group>"; };
+		A10000000000000000000074 /* znhaas_open_webview_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_open_webview_test.html; sourceTree = "<group>"; };
+		A10000000000000000000075 /* znhaas_webview_target.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = znhaas_webview_target.html; sourceTree = "<group>"; };
+		A10000000000000000000076 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +93,7 @@
 				A10000000000000000000073 /* znhaas_network_test.html */,
 				A10000000000000000000074 /* znhaas_open_webview_test.html */,
 				A10000000000000000000075 /* znhaas_webview_target.html */,
+				A10000000000000000000076 /* Assets.xcassets */,
 				A10000000000000000000013 /* Info.plist */,
 				A10000000000000000000005 /* Base.lproj */,
 			);
@@ -201,6 +204,7 @@
 				A10000000000000000000083 /* znhaas_network_test.html in Resources */,
 				A10000000000000000000084 /* znhaas_open_webview_test.html in Resources */,
 				A10000000000000000000085 /* znhaas_webview_target.html in Resources */,
+				A10000000000000000000086 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -277,6 +281,7 @@
 		A10000000000000000000062 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = FHYA4626JP;
@@ -302,6 +307,7 @@
 		A10000000000000000000063 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = FHYA4626JP;

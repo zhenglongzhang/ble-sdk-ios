@@ -1,4 +1,0 @@
-module ZnhaasBleSDK {
-header "ZnhaasBleSDK-Swift.h"
-export *
-}
