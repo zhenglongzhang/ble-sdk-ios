@@ -5,6 +5,18 @@ public typealias ZnhaasBleWriteCompletion = (Result<ZnhaasBleWriteResult, Znhaas
 public typealias ZnhaasBleNotifyCompletion = (Result<Void, ZnhaasBleError>) -> Void
 public typealias ZnhaasBleReadCompletion = (Result<Void, ZnhaasBleError>) -> Void
 
+public struct ZnhaasBlePermissionState: Equatable {
+    public let granted: Bool
+    public let authorization: String
+    public let text: String
+
+    public init(granted: Bool, authorization: String, text: String) {
+        self.granted = granted
+        self.authorization = authorization
+        self.text = text
+    }
+}
+
 public final class ZnhaasBleClient: NSObject {
     public static let targetDeviceNamePrefix = "znhaas"
     public static let fixedServiceUUID = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
@@ -104,6 +116,43 @@ public final class ZnhaasBleClient: NSObject {
 
     public static func extractDisplayName(_ deviceName: String?) -> String {
         ZnhaasBleDevice.toDisplayName(deviceName)
+    }
+
+    public static func resolvePermissionState(
+        systemAuthorization: String,
+        centralState: CBManagerState?
+    ) -> ZnhaasBlePermissionState {
+        let authorization = systemAuthorization.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let centralState {
+            switch centralState {
+            case .poweredOn, .poweredOff:
+                return ZnhaasBlePermissionState(granted: true, authorization: "allowedAlways", text: "已授权")
+            case .unauthorized:
+                return ZnhaasBlePermissionState(granted: false, authorization: "denied", text: "已拒绝")
+            case .unknown, .resetting:
+                if authorization == "notDetermined" || authorization.isEmpty {
+                    return ZnhaasBlePermissionState(granted: false, authorization: "checking", text: "检查中")
+                }
+            case .unsupported:
+                break
+            @unknown default:
+                break
+            }
+        }
+
+        switch authorization {
+        case "allowedAlways", "legacy":
+            return ZnhaasBlePermissionState(granted: true, authorization: authorization, text: "已授权")
+        case "denied":
+            return ZnhaasBlePermissionState(granted: false, authorization: "denied", text: "已拒绝")
+        case "restricted":
+            return ZnhaasBlePermissionState(granted: false, authorization: "restricted", text: "受限制")
+        case "notDetermined":
+            return ZnhaasBlePermissionState(granted: false, authorization: "notDetermined", text: "未询问")
+        default:
+            return ZnhaasBlePermissionState(granted: false, authorization: authorization.isEmpty ? "unknown" : authorization, text: "未知")
+        }
     }
 
     public static func buildRequestId(action: ZnhaasRecordAction) -> String {

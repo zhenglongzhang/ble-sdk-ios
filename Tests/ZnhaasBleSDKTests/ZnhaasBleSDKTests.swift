@@ -1,4 +1,6 @@
 import XCTest
+import CoreBluetooth
+import Foundation
 @testable import ZnhaasBleSDK
 
 final class ZnhaasBleSDKTests: XCTestCase {
@@ -62,5 +64,78 @@ final class ZnhaasBleSDKTests: XCTestCase {
     func testRequestIdUsesReqPrefix() {
         let requestId = ZnhaasBleClient.buildRequestId(action: .disableVideoKey)
         XCTAssertTrue(requestId.hasPrefix("req-"))
+    }
+
+    func testPermissionStateUsesPoweredOnAsAuthorized() {
+        let permission = ZnhaasBleClient.resolvePermissionState(
+            systemAuthorization: "notDetermined",
+            centralState: .poweredOn
+        )
+
+        XCTAssertTrue(permission.granted)
+        XCTAssertEqual(permission.authorization, "allowedAlways")
+        XCTAssertEqual(permission.text, "已授权")
+    }
+
+    func testPermissionStateUsesPoweredOffAsAuthorized() {
+        let permission = ZnhaasBleClient.resolvePermissionState(
+            systemAuthorization: "notDetermined",
+            centralState: .poweredOff
+        )
+
+        XCTAssertTrue(permission.granted)
+        XCTAssertEqual(permission.authorization, "allowedAlways")
+        XCTAssertEqual(permission.text, "已授权")
+    }
+
+    func testPermissionStateKeepsUnauthorizedAsDenied() {
+        let permission = ZnhaasBleClient.resolvePermissionState(
+            systemAuthorization: "allowedAlways",
+            centralState: .unauthorized
+        )
+
+        XCTAssertFalse(permission.granted)
+        XCTAssertEqual(permission.authorization, "denied")
+        XCTAssertEqual(permission.text, "已拒绝")
+    }
+
+    func testDemoBridgeExposesAndroidJsonCompatibilityMethods() throws {
+        let source = try demoMainViewControllerSource()
+        [
+            "startRecordJson",
+            "stopRecordJson",
+            "queryRecordStatusJson",
+            "disableVideoKeyJson",
+            "enableVideoKeyJson"
+        ].forEach { method in
+            XCTAssertGreaterThanOrEqual(source.occurrenceCount(of: "\(method): function"), 1, "Expected iOS BLE H5 bridge to expose \(method)")
+        }
+
+        [
+            "scanCodeJson",
+            "takePhotoJson",
+            "openWebViewJson"
+        ].forEach { method in
+            XCTAssertGreaterThanOrEqual(source.occurrenceCount(of: "\(method): function"), 2, "Expected both iOS AppBridge scripts to expose \(method)")
+        }
+    }
+
+    private func demoMainViewControllerSource() throws -> String {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let packageRoot = testFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = packageRoot
+            .appendingPathComponent("DemoApp")
+            .appendingPathComponent("ZnhaasBleDemo")
+            .appendingPathComponent("MainViewController.swift")
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    }
+}
+
+private extension String {
+    func occurrenceCount(of needle: String) -> Int {
+        components(separatedBy: needle).count - 1
     }
 }

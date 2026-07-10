@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="zh-CN">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -292,6 +293,7 @@
     }
   </style>
 </head>
+
 <body>
   <a class="back-link" href="znhaas_app_tests.html">返回测试入口</a>
 
@@ -482,8 +484,12 @@
     function handleNativeEvent(event) {
       const type = event.type;
       const data = event.data || {};
-      if (type === 'state' || type === 'bluetoothStateChanged' || type === 'permissionsResult') {
+      if (type === 'state' || type === 'bluetoothStateChanged' || type === 'permissionsResult' || type === 'enableBluetoothResult') {
+        log(type + ' ' + JSON.stringify(data));
         updateState(data);
+      }
+      if (type === 'enableBluetoothResult' && data.message) {
+        log((data.success ? '开启蓝牙成功: ' : '开启蓝牙失败: ') + data.message);
       }
       if (type === 'scanStarted') {
         setText('scanStatus', '扫描中');
@@ -542,8 +548,8 @@
     }
 
     function updateState(data) {
-      setText('bluetoothStatus', data.bluetoothEnabled ? '已开启' : '未开启');
-      setText('permissionStatus', data.hasRequiredPermissions ? '已授权' : '未授权');
+      setText('bluetoothStatus', data.bluetoothStatusText || (data.bluetoothEnabled ? '已开启' : (data.bluetoothChecking ? '检查中' : '未开启')));
+      setText('permissionStatus', data.bluetoothAuthorizationText || (data.hasRequiredPermissions ? '已授权' : '未授权'));
       setText('scanStatus', data.scanning ? '扫描中' : '已停止');
       setText('connectStatus', data.connected ? '已连接' : '未连接');
     }
@@ -619,4 +625,5 @@
     });
   </script>
 </body>
+
 </html>

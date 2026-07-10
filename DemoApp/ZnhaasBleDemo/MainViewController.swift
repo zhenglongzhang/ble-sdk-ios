@@ -7,12 +7,15 @@ import WebKit
 final class MainViewController: UIViewController {
     private let bridgeName = "ZnhaasBleBridge"
     private let appBridgeName = "ZnhaasAppBridge"
-    private let bleClient = ZnhaasBleClient()
+    private var bleClient: ZnhaasBleClient?
     private var devices: [ZnhaasBleDevice] = []
     private var fixedReplySupportsRead = false
     private var pendingReadFallback = false
     private var enabledReplyCharacteristicUUIDs: Set<String> = []
     private var webView: WKWebView!
+    private var mainWebViewRecoveryAttempts = 0
+    private var mainWebViewActiveRecoveryAttempts = 0
+    private var mainWebViewDidFinishInitialLoad = false
     private var pendingScanCodeRequestId: String?
     private var pendingTakePhotoRequestId: String?
     private var pendingTakePhotoMaxWidth: CGFloat = 1600
@@ -20,16 +23,38 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "龙湖电梯维保"
-        bleClient.delegate = self
+        title = configuredDisplayName()
+        view.backgroundColor = .white
         setupWebView()
-        loadDemoPage()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        loadConfiguredEntry()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: false)
     }
 
     deinit {
+        NotificationCenter.default.removeObserver(self)
         webView?.configuration.userContentController.removeScriptMessageHandler(forName: bridgeName)
         webView?.configuration.userContentController.removeScriptMessageHandler(forName: appBridgeName)
-        bleClient.release()
+        bleClient?.release()
+    }
+
+    private func ensureBleClient() -> ZnhaasBleClient {
+        if let bleClient {
+            return bleClient
+        }
+        let client = ZnhaasBleClient()
+        client.delegate = self
+        bleClient = client
+        return client
     }
 
     private func setupWebView() {
@@ -65,12 +90,115 @@ final class MainViewController: UIViewController {
         ])
     }
 
-    private func loadDemoPage() {
+    private func loadConfiguredEntry() {
+        let webURLString = configuredWebURLString()
+        if shouldLoadBundledTestPage(webURLString) {
+            loadBundledTestPage()
+            return
+        }
+
+        guard let url = URL(string: webURLString), ["http", "https"].contains(url.scheme?.lowercased()) else {
+            loadConfigError("Invalid APP_WEB_URL: \(webURLString)")
+            return
+        }
+        webView.load(URLRequest(url: url))
+    }
+
+    private func configuredWebURLString() -> String {
+        (Bundle.main.object(forInfoDictionaryKey: "APP_WEB_URL") as? String ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func isConfiguredEntryRemote() -> Bool {
+        let webURLString = configuredWebURLString()
+        guard let url = URL(string: webURLString), let scheme = url.scheme?.lowercased() else {
+            return false
+        }
+        return ["http", "https"].contains(scheme)
+    }
+
+    private func configuredDisplayName() -> String {
+        let displayName = (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if displayName.isEmpty || displayName == "$(APP_DISPLAY_NAME)" {
+            return "龙湖电梯维保"
+        }
+        return displayName
+    }
+
+    private func shouldLoadBundledTestPage(_ webURLString: String) -> Bool {
+        webURLString.isEmpty
+            || webURLString == "$(APP_WEB_URL)"
+            || webURLString.hasPrefix("file:///ios_bundle/")
+            || webURLString == "znhaas_app_tests.html"
+    }
+
+    private func loadBundledTestPage() {
         guard let url = Bundle.main.url(forResource: "znhaas_app_tests", withExtension: "html") else {
             webView.loadHTMLString("<h1>znhaas_app_tests.html not found</h1>", baseURL: nil)
             return
         }
         webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+    }
+
+    private func loadConfigError(_ message: String) {
+        webView.loadHTMLString("""
+        <html><body style="font-family:-apple-system;padding:24px;">
+        <h2>App entry config error</h2>
+        <p>\(htmlEscaped(message))</p>
+        </body></html>
+        """, baseURL: nil)
+    }
+
+    private func htmlEscaped(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+    }
+
+    private func recoverMainWebViewIfNeeded(reason: String, error: Error? = nil) {
+        if let error, isCancelledNavigationError(error) {
+            return
+        }
+        let retryDelays: [TimeInterval] = [0.8, 2.0, 4.0, 6.0]
+        guard mainWebViewRecoveryAttempts < retryDelays.count else {
+            return
+        }
+        let delay = retryDelays[mainWebViewRecoveryAttempts]
+        mainWebViewRecoveryAttempts += 1
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self = self else { return }
+            self.webView.stopLoading()
+            self.loadConfiguredEntry()
+        }
+    }
+
+    @objc private func appDidBecomeActive() {
+        if bleClient != nil {
+            emitStateAfterBluetoothRefresh()
+        }
+        guard isConfiguredEntryRemote(), mainWebViewDidFinishInitialLoad == false else {
+            return
+        }
+        guard mainWebViewActiveRecoveryAttempts < 3 else {
+            return
+        }
+        mainWebViewActiveRecoveryAttempts += 1
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            guard let self = self, self.mainWebViewDidFinishInitialLoad == false else {
+                return
+            }
+            self.mainWebViewRecoveryAttempts = 0
+            self.webView.stopLoading()
+            self.loadConfiguredEntry()
+        }
+    }
+
+    private func isCancelledNavigationError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     }
 
     private func bridgeBootstrapScript() -> String {
@@ -100,10 +228,15 @@ final class MainViewController: UIViewController {
             connect: function(identifier) { return send('connect', { identifier: identifier }); },
             disconnect: function() { return send('disconnect'); },
             startRecord: function(extraFields) { return send('startRecord', { extraFields: cleanExtraFields(extraFields) }); },
+            startRecordJson: function(extraFieldsJson) { return send('startRecord', { extraFields: cleanExtraFields(parseJsonObject(extraFieldsJson)) }); },
             stopRecord: function(extraFields) { return send('stopRecord', { extraFields: cleanExtraFields(extraFields) }); },
+            stopRecordJson: function(extraFieldsJson) { return send('stopRecord', { extraFields: cleanExtraFields(parseJsonObject(extraFieldsJson)) }); },
             queryRecordStatus: function(extraFields) { return send('queryRecordStatus', { extraFields: cleanExtraFields(extraFields) }); },
+            queryRecordStatusJson: function(extraFieldsJson) { return send('queryRecordStatus', { extraFields: cleanExtraFields(parseJsonObject(extraFieldsJson)) }); },
             disableVideoKey: function(extraFields) { return send('disableVideoKey', { extraFields: cleanExtraFields(extraFields) }); },
+            disableVideoKeyJson: function(extraFieldsJson) { return send('disableVideoKey', { extraFields: cleanExtraFields(parseJsonObject(extraFieldsJson)) }); },
             enableVideoKey: function(extraFields) { return send('enableVideoKey', { extraFields: cleanExtraFields(extraFields) }); },
+            enableVideoKeyJson: function(extraFieldsJson) { return send('enableVideoKey', { extraFields: cleanExtraFields(parseJsonObject(extraFieldsJson)) }); },
             writeCommand: function(command) { return send('writeCommand', { command: command }); }
           };
           if (!window.ZnhaasAppBridge || !window.ZnhaasAppBridge.__isZnhaasIOSAppBridge) {
@@ -127,14 +260,17 @@ final class MainViewController: UIViewController {
             window.ZnhaasAppBridge = {
               __isZnhaasIOSAppBridge: true,
               scanCode: function(options) { return sendApp('scanCode', options || {}); },
+              scanCodeJson: function(optionsJson) { return sendApp('scanCode', parseJsonObject(optionsJson)); },
               takePhoto: function(options) { return sendApp('takePhoto', options || {}); },
+              takePhotoJson: function(optionsJson) { return sendApp('takePhoto', parseJsonObject(optionsJson)); },
               getNetworkState: function() { return sendApp('getNetworkState'); },
               openWebView: function(options) {
                 if (typeof options === 'string') {
                   return sendApp('openWebView', { url: options });
                 }
                 return sendApp('openWebView', options || {});
-              }
+              },
+              openWebViewJson: function(optionsJson) { return sendApp('openWebView', parseJsonObject(optionsJson)); }
             };
           }
           function cleanExtraFields(extraFields) {
@@ -150,6 +286,23 @@ final class MainViewController: UIViewController {
             });
             return cleaned;
           }
+          function parseJsonObject(value) {
+            if (!value) {
+              return {};
+            }
+            if (typeof value === 'object') {
+              return value;
+            }
+            if (typeof value !== 'string') {
+              return {};
+            }
+            try {
+              var parsed = JSON.parse(value);
+              return parsed && typeof parsed === 'object' ? parsed : {};
+            } catch (error) {
+              return {};
+            }
+          }
         })();
         """
     }
@@ -157,35 +310,37 @@ final class MainViewController: UIViewController {
     private func handle(action: String, payload: [String: Any], callbackId: String?) {
         switch action {
         case "getState":
-            emit("state", data: baseState())
+            emitStateAfterBluetoothRefresh()
         case "requestPermissions":
-            var data = baseState()
-            data["granted"] = true
-            emit("permissionsResult", data: data)
+            emitStateAfterBluetoothRefresh(type: "permissionsResult")
         case "requestEnableBluetooth":
-            emitLog(bleClient.isBluetoothEnabled ? "Bluetooth is already powered on." : "iOS does not allow apps to enable Bluetooth directly. Please turn it on in Settings.")
-            emit("state", data: baseState())
+            handleEnableBluetoothRequest(callbackId: callbackId)
         case "startScan":
             let durationMs = payload["durationMs"] as? Double ?? 12_000
             devices.removeAll()
             emit("scanStarted", data: [:])
-            bleClient.startScan(duration: max(durationMs / 1000.0, 0.1))
+            ensureBleClient().startScan(duration: max(durationMs / 1000.0, 0.1))
         case "stopScan":
-            bleClient.stopScan()
+            bleClient?.stopScan()
         case "connect":
             connect(identifierString: payload["identifier"] as? String)
         case "disconnect":
-            bleClient.disconnect()
+            bleClient?.disconnect()
         case "startRecord":
-            sendRecordAction("startRecord", extraFields: parseExtraFields(payload), perform: bleClient.startRecord(extraFields:completion:))
+            let client = ensureBleClient()
+            sendRecordAction("startRecord", extraFields: parseExtraFields(payload), perform: client.startRecord(extraFields:completion:))
         case "stopRecord":
-            sendRecordAction("stopRecord", extraFields: parseExtraFields(payload), perform: bleClient.stopRecord(extraFields:completion:))
+            let client = ensureBleClient()
+            sendRecordAction("stopRecord", extraFields: parseExtraFields(payload), perform: client.stopRecord(extraFields:completion:))
         case "queryRecordStatus":
-            sendRecordAction("queryRecordStatus", extraFields: parseExtraFields(payload), perform: bleClient.queryRecordStatus(extraFields:completion:))
+            let client = ensureBleClient()
+            sendRecordAction("queryRecordStatus", extraFields: parseExtraFields(payload), perform: client.queryRecordStatus(extraFields:completion:))
         case "disableVideoKey":
-            sendRecordAction("disableVideoKey", extraFields: parseExtraFields(payload), perform: bleClient.disableVideoKey(extraFields:completion:))
+            let client = ensureBleClient()
+            sendRecordAction("disableVideoKey", extraFields: parseExtraFields(payload), perform: client.disableVideoKey(extraFields:completion:))
         case "enableVideoKey":
-            sendRecordAction("enableVideoKey", extraFields: parseExtraFields(payload), perform: bleClient.enableVideoKey(extraFields:completion:))
+            let client = ensureBleClient()
+            sendRecordAction("enableVideoKey", extraFields: parseExtraFields(payload), perform: client.enableVideoKey(extraFields:completion:))
         case "writeCommand":
             writeCommand(payload["command"] as? String)
         default:
@@ -194,6 +349,131 @@ final class MainViewController: UIViewController {
 
         if let callbackId {
             emitLog("Bridge action handled: \(action), callbackId=\(callbackId)")
+        }
+    }
+
+    private func emitStateAfterBluetoothRefresh(type: String = "state", extraData: [String: Any] = [:], attempt: Int = 0) {
+        let client = ensureBleClient()
+        let emitRefreshedState = { [weak self] in
+            guard let self = self else { return }
+            var data = self.baseState()
+            if type == "permissionsResult" {
+                data["granted"] = data["hasRequiredPermissions"] as? Bool ?? false
+            }
+            for (key, value) in extraData {
+                data[key] = value
+            }
+            self.emit(type, data: data)
+        }
+
+        if shouldWaitForBluetoothState(client: client), attempt < 20 {
+            if attempt == 0 {
+                emitRefreshedState()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                self?.emitStateAfterBluetoothRefresh(type: type, extraData: extraData, attempt: attempt + 1)
+            }
+            return
+        }
+
+        emitRefreshedState()
+    }
+
+    private func handleEnableBluetoothRequest(callbackId: String?, attempt: Int = 0) {
+        let client = ensureBleClient()
+        switch client.currentState {
+        case .poweredOn:
+            let message = "蓝牙已开启"
+            emitLog(message)
+            emitEnableBluetoothResult(callbackId: callbackId, success: true, code: "poweredOn", message: message)
+            emitStateAfterBluetoothRefresh()
+        case .poweredOff:
+            let message = "iOS 不允许 App 直接开启蓝牙，请从控制中心或系统设置 > 蓝牙手动开启。"
+            emitLog(message)
+            emitEnableBluetoothResult(callbackId: callbackId, success: false, code: "poweredOff", message: message)
+            presentBluetoothPoweredOffGuidance()
+            emitStateAfterBluetoothRefresh()
+        case .unauthorized:
+            let message = "蓝牙权限未授权，请在系统设置中允许本 App 使用蓝牙。"
+            emitLog(message)
+            emitEnableBluetoothResult(callbackId: callbackId, success: false, code: "unauthorized", message: message)
+            presentBluetoothPermissionGuidance()
+            emitStateAfterBluetoothRefresh()
+        case .unsupported:
+            let message = "当前设备不支持蓝牙 BLE。"
+            emitLog(message)
+            emitEnableBluetoothResult(callbackId: callbackId, success: false, code: "unsupported", message: message)
+            emitStateAfterBluetoothRefresh()
+        case .unknown, .resetting:
+            if attempt == 0 {
+                emitLog("正在检查蓝牙状态...")
+                emitStateAfterBluetoothRefresh()
+            }
+            if attempt < 20 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                    self?.handleEnableBluetoothRequest(callbackId: callbackId, attempt: attempt + 1)
+                }
+            } else {
+                let message = "蓝牙状态检查超时，请稍后重试。"
+                self.emitEnableBluetoothResult(callbackId: callbackId, success: false, code: "stateTimeout", message: message)
+            }
+        @unknown default:
+            let message = "蓝牙状态未知，请稍后重试。"
+            emitLog(message)
+            emitEnableBluetoothResult(callbackId: callbackId, success: false, code: "unknown", message: message)
+            emitStateAfterBluetoothRefresh()
+        }
+    }
+
+    private func emitEnableBluetoothResult(callbackId: String?, success: Bool, code: String, message: String) {
+        var data = baseState()
+        data["requestId"] = callbackId ?? makeRequestId(prefix: "enableBluetooth")
+        data["success"] = success
+        data["code"] = code
+        data["message"] = message
+        emit("enableBluetoothResult", data: data)
+    }
+
+    private func presentBluetoothPoweredOffGuidance() {
+        presentBluetoothGuidance(
+            title: "蓝牙未开启",
+            message: "iOS 不允许 App 直接开启蓝牙。请从屏幕右上角下拉打开控制中心，或进入系统设置 > 蓝牙，手动开启后回到本页面继续操作。",
+            settingsURL: URL(string: "App-Prefs:root=Bluetooth")
+        )
+    }
+
+    private func presentBluetoothPermissionGuidance() {
+        presentBluetoothGuidance(
+            title: "蓝牙权限未开启",
+            message: "请在系统设置中允许“\(configuredDisplayName())”使用蓝牙，然后回到本页面继续操作。",
+            settingsURL: URL(string: UIApplication.openSettingsURLString)
+        )
+    }
+
+    private func presentBluetoothGuidance(title: String, message: String, settingsURL: URL?) {
+        if presentedViewController is UIAlertController {
+            return
+        }
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "知道了", style: .cancel))
+        if let settingsURL {
+            alert.addAction(UIAlertAction(title: "设置", style: .default) { [weak self] _ in
+                self?.openSettings(preferredURL: settingsURL)
+            })
+        }
+        present(alert, animated: true)
+    }
+
+    private func openSettings(preferredURL: URL) {
+        UIApplication.shared.open(preferredURL, options: [:]) { success in
+            guard success == false,
+                  preferredURL.absoluteString != UIApplication.openSettingsURLString,
+                  let fallbackURL = URL(string: UIApplication.openSettingsURLString) else {
+                return
+            }
+            DispatchQueue.main.async {
+                UIApplication.shared.open(fallbackURL, options: [:], completionHandler: nil)
+            }
         }
     }
 
@@ -364,7 +644,7 @@ final class MainViewController: UIViewController {
         pendingReadFallback = false
         enabledReplyCharacteristicUUIDs.removeAll()
         emitLog("Connecting to \(identifier.uuidString)")
-        bleClient.connect(identifier: identifier)
+        ensureBleClient().connect(identifier: identifier)
     }
 
     private func writeCommand(_ command: String?) {
@@ -377,7 +657,7 @@ final class MainViewController: UIViewController {
             "requestId": NSNull(),
             "command": command
         ])
-        _ = bleClient.writeFixedASCIICommand(command, requestId: nil) { [weak self] result in
+        _ = ensureBleClient().writeFixedASCIICommand(command, requestId: nil) { [weak self] result in
             self?.handleWriteResult("writeCommand", result: result)
         }
     }
@@ -580,7 +860,7 @@ final class MainViewController: UIViewController {
                 return
             }
             self.pendingReadFallback = true
-            self.bleClient.readFixedReply { [weak self] result in
+            self.bleClient?.readFixedReply { [weak self] result in
                 if case .failure(let error) = result {
                     self?.pendingReadFallback = false
                     self?.emitError(source: "readFixedReply", message: error.localizedDescription)
@@ -590,16 +870,83 @@ final class MainViewController: UIViewController {
     }
 
     private func baseState() -> [String: Any] {
-        [
+        let client = bleClient
+        let state = client?.currentState
+        let permission = bluetoothPermissionState(centralState: state)
+        var data: [String: Any] = [
             "bluetoothSupported": true,
-            "bluetoothEnabled": bleClient.isBluetoothEnabled,
-            "hasRequiredPermissions": true,
-            "scanning": bleClient.isScanning,
-            "connected": bleClient.connectedDevice != nil,
+            "bluetoothInitialized": client != nil,
+            "bluetoothEnabled": state == .poweredOn,
+            "bluetoothChecking": state == .unknown || state == .resetting,
+            "bluetoothStatusText": bluetoothStateText(state),
+            "hasRequiredPermissions": permission.granted,
+            "bluetoothAuthorization": permission.authorization,
+            "bluetoothAuthorizationText": permission.text,
+            "scanning": client?.isScanning ?? false,
+            "connected": client?.connectedDevice != nil,
             "serviceUuid": ZnhaasBleClient.fixedServiceUUID.uuidString,
             "writeUuid": ZnhaasBleClient.fixedWriteCharacteristicUUID.uuidString,
             "replyUuid": ZnhaasBleClient.fixedNotifyCharacteristicUUID.uuidString
         ]
+        if let state {
+            data["stateCode"] = state.rawValue
+            data["stateText"] = bluetoothStateText(state)
+        }
+        return data
+    }
+
+    private func shouldWaitForBluetoothState(client: ZnhaasBleClient) -> Bool {
+        let permission = bluetoothPermissionState(centralState: client.currentState)
+        switch client.currentState {
+        case .unknown, .resetting:
+            return true
+        default:
+            return permission.authorization == "checking"
+        }
+    }
+
+    private func bluetoothPermissionState(centralState: CBManagerState?) -> ZnhaasBlePermissionState {
+        let authorization: String
+        if #available(iOS 13.1, *) {
+            switch CBManager.authorization {
+            case .allowedAlways:
+                authorization = "allowedAlways"
+            case .denied:
+                authorization = "denied"
+            case .restricted:
+                authorization = "restricted"
+            case .notDetermined:
+                authorization = "notDetermined"
+            @unknown default:
+                authorization = "unknown"
+            }
+        } else {
+            authorization = "legacy"
+        }
+        return ZnhaasBleClient.resolvePermissionState(
+            systemAuthorization: authorization,
+            centralState: centralState
+        )
+    }
+
+    private func bluetoothStateText(_ state: CBManagerState?) -> String {
+        guard let state else {
+            return "未检查"
+        }
+        switch state {
+        case .poweredOn:
+            return "已开启"
+        case .poweredOff:
+            return "未开启"
+        case .unauthorized:
+            return "未授权"
+        case .unsupported:
+            return "设备不支持"
+        case .unknown, .resetting:
+            return "检查中"
+        @unknown default:
+            return "未知"
+        }
     }
 
     private func deviceToJson(_ device: ZnhaasBleDevice) -> [String: Any] {
@@ -727,7 +1074,11 @@ private extension Array where Element == String {
 
 private func configureH5WebView(_ webView: WKWebView) {
     webView.allowsLinkPreview = false
+    webView.backgroundColor = .white
+    webView.isOpaque = false
     let scrollView = webView.scrollView
+    scrollView.backgroundColor = .white
+    scrollView.contentInsetAdjustmentBehavior = .never
     scrollView.bounces = false
     scrollView.alwaysBounceVertical = false
     scrollView.alwaysBounceHorizontal = false
@@ -791,8 +1142,23 @@ private func h5ViewportLockScript() -> String {
 
 extension MainViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        mainWebViewDidFinishInitialLoad = true
+        mainWebViewRecoveryAttempts = 0
+        mainWebViewActiveRecoveryAttempts = 0
         emitLog("H5 demo ready. iOS JSBridge installed.")
         emit("state", data: baseState())
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        recoverMainWebViewIfNeeded(reason: "didFail", error: error)
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        recoverMainWebViewIfNeeded(reason: "didFailProvisionalNavigation", error: error)
+    }
+
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        recoverMainWebViewIfNeeded(reason: "webContentProcessDidTerminate")
     }
 }
 
@@ -858,7 +1224,7 @@ extension MainViewController: ZnhaasBleClientDelegate {
     func bleClient(_ client: ZnhaasBleClient, didUpdateState state: CBManagerState) {
         var data = baseState()
         data["stateCode"] = state.rawValue
-        data["stateText"] = "\(state)"
+        data["stateText"] = bluetoothStateText(state)
         data["enabled"] = state == .poweredOn
         emit("bluetoothStateChanged", data: data)
     }
@@ -1197,8 +1563,14 @@ private final class ZnhaasAppWebViewController: UIViewController, WKNavigationDe
     override func viewDidLoad() {
         super.viewDidLoad()
         title = pageTitle
+        view.backgroundColor = .white
         setupWebView()
         loadURL()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
     }
 
     deinit {
@@ -1256,13 +1628,27 @@ private final class ZnhaasAppWebViewController: UIViewController, WKNavigationDe
           window.ZnhaasAppBridge = {
             __isZnhaasIOSAppBridge: true,
             scanCode: function(options) { return send('scanCode', options || {}); },
+            scanCodeJson: function(optionsJson) { return send('scanCode', parseJsonObject(optionsJson)); },
             takePhoto: function(options) { return send('takePhoto', options || {}); },
+            takePhotoJson: function(optionsJson) { return send('takePhoto', parseJsonObject(optionsJson)); },
             getNetworkState: function() { return send('getNetworkState'); },
             openWebView: function(options) {
               if (typeof options === 'string') { return send('openWebView', { url: options }); }
               return send('openWebView', options || {});
-            }
+            },
+            openWebViewJson: function(optionsJson) { return send('openWebView', parseJsonObject(optionsJson)); }
           };
+          function parseJsonObject(value) {
+            if (!value) { return {}; }
+            if (typeof value === 'object') { return value; }
+            if (typeof value !== 'string') { return {}; }
+            try {
+              var parsed = JSON.parse(value);
+              return parsed && typeof parsed === 'object' ? parsed : {};
+            } catch (error) {
+              return {};
+            }
+          }
         })();
         """
     }
