@@ -175,10 +175,10 @@
 			};
 			buildConfigurationList = A10000000000000000000050 /* Build configuration list for PBXProject "ZnhaasBleDemo" */;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = A10000000000000000000001;

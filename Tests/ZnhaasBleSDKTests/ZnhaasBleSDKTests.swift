@@ -120,17 +120,36 @@ final class ZnhaasBleSDKTests: XCTestCase {
         }
     }
 
+    func testDemoAppUsesSimplifiedChineseAsDevelopmentLanguage() throws {
+        let source = try demoProjectSource()
+        XCTAssertTrue(source.contains("developmentRegion = \"zh-Hans\";"))
+        XCTAssertTrue(source.contains("\"zh-Hans\","))
+    }
+
     private func demoMainViewControllerSource() throws -> String {
-        let testFile = URL(fileURLWithPath: #filePath)
-        let packageRoot = testFile
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
+        let packageRoot = packageRootURL()
         let sourceURL = packageRoot
             .appendingPathComponent("DemoApp")
             .appendingPathComponent("ZnhaasBleDemo")
             .appendingPathComponent("MainViewController.swift")
         return try String(contentsOf: sourceURL, encoding: .utf8)
+    }
+
+    private func demoProjectSource() throws -> String {
+        let packageRoot = packageRootURL()
+        let sourceURL = packageRoot
+            .appendingPathComponent("DemoApp")
+            .appendingPathComponent("ZnhaasBleDemo.xcodeproj")
+            .appendingPathComponent("project.pbxproj")
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    }
+
+    private func packageRootURL() -> URL {
+        let testFile = URL(fileURLWithPath: #filePath)
+        return testFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
     }
 }
 
