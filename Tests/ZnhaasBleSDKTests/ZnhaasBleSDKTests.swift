@@ -126,6 +126,15 @@ final class ZnhaasBleSDKTests: XCTestCase {
         XCTAssertTrue(source.contains("\"zh-Hans\","))
     }
 
+    func testDemoBridgeGetStateSynchronouslyReturnsCachedJson() throws {
+        let source = try demoMainViewControllerSource()
+
+        XCTAssertTrue(source.contains("var latestState = {"))
+        XCTAssertTrue(source.contains("getState: function() { send('getState'); return JSON.stringify(latestState); }"))
+        XCTAssertTrue(source.contains("if (event.type === 'deviceConnecting' || event.type === 'deviceConnected' || event.type === 'deviceReady') {"))
+        XCTAssertTrue(source.contains("if (event.type === 'deviceDisconnected') {"))
+    }
+
     private func demoMainViewControllerSource() throws -> String {
         let packageRoot = packageRootURL()
         let sourceURL = packageRoot

@@ -440,8 +440,9 @@
 
     function refreshState() {
       if (!ensureBridge()) return;
-      const requestId = bridge().getState();
-      log('State requested: ' + requestId);
+      const data = JSON.parse(bridge().getState());
+      updateState(data);
+      log('State: ' + JSON.stringify(data));
     }
 
     function connect(identifier) {
@@ -485,7 +486,7 @@
       const type = event.type;
       const data = event.data || {};
       if (type === 'state' || type === 'bluetoothStateChanged' || type === 'permissionsResult' || type === 'enableBluetoothResult') {
-        log(type + ' ' + JSON.stringify(data));
+        // log(type + ' ' + JSON.stringify(data));
         updateState(data);
       }
       if (type === 'enableBluetoothResult' && data.message) {

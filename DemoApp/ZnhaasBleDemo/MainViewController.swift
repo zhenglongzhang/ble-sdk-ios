@@ -209,6 +209,13 @@ final class MainViewController: UIViewController {
           }
           var callbacks = {};
           var sequence = 1;
+          var latestState = {
+            bluetoothInitialized: false,
+            bluetoothChecking: true,
+            bluetoothEnabled: false,
+            scanning: false,
+            connected: false
+          };
           function send(action, payload) {
             var callbackId = 'ios-cb-' + Date.now() + '-' + (sequence++);
             window.webkit.messageHandlers.\(bridgeName).postMessage({
@@ -218,9 +225,29 @@ final class MainViewController: UIViewController {
             });
             return callbackId;
           }
+          function updateLatestState(event) {
+            if (!event || typeof event !== 'object') {
+              return;
+            }
+            if (event.type === 'state' || event.type === 'bluetoothStateChanged' || event.type === 'permissionsResult' || event.type === 'enableBluetoothResult') {
+              var data = event.data;
+              if (data && typeof data === 'object') {
+                Object.keys(data).forEach(function(key) {
+                  latestState[key] = data[key];
+                });
+              }
+            }
+            if (event.type === 'deviceConnecting' || event.type === 'deviceConnected' || event.type === 'deviceReady') {
+              latestState.connected = true;
+            }
+            if (event.type === 'deviceDisconnected') {
+              latestState.connected = false;
+            }
+          }
           window.ZnhaasBleBridge = {
             __isZnhaasIOSBridge: true,
-            getState: function() { return send('getState'); },
+            __updateLatestState: updateLatestState,
+            getState: function() { send('getState'); return JSON.stringify(latestState); },
             requestPermissions: function() { return send('requestPermissions'); },
             requestEnableBluetooth: function() { return send('requestEnableBluetooth'); },
             startScan: function(durationMs) { return send('startScan', { durationMs: durationMs }); },
@@ -990,7 +1017,7 @@ final class MainViewController: UIViewController {
         }
         DispatchQueue.main.async { [weak self] in
             self?.webView.evaluateJavaScript(
-                "window.ZnhaasBle&&window.ZnhaasBle.__dispatch&&window.ZnhaasBle.__dispatch(\(json));",
+                "(function(event) { window.ZnhaasBleBridge&&window.ZnhaasBleBridge.__updateLatestState&&window.ZnhaasBleBridge.__updateLatestState(event); window.ZnhaasBle&&window.ZnhaasBle.__dispatch&&window.ZnhaasBle.__dispatch(event); })(\(json));",
                 completionHandler: nil
             )
         }
